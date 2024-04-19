@@ -8,21 +8,21 @@ macro_rules! matrix {
     ($w: tt x $h: tt $([$($v: expr),* $(,)?])*) => {{
         let mut m = Matrix::<$w, $h>::new_zeroed();
 
-        matrix_fill!(m, 0, $([$($v,)*])*);
+        $crate::matrix_fill!(m, 0, $([$($v,)*])*);
 
         m
     }};
 }
 
-#[allow(unused_macros)] // stoobid rust compiler
+#[macro_export]
 macro_rules! matrix_fill {
     ($m: expr, $y: expr, [$($v: expr,)+] $($rest: tt)*) => {{
-        matrix_fill!($m, $y, 0, $($v,)*);
-        matrix_fill!($m, $y + 1, $($rest)*);
+        $crate::matrix_fill!($m, $y, 0, $($v,)*);
+        $crate::matrix_fill!($m, $y + 1, $($rest)*);
     }};
     ($m: expr, $y: expr, $x: expr, $v: expr, $($rest: tt)*) => {{
         $m[($x, $y)] = $v;
-        matrix_fill!($m, $y, $x + 1, $($rest)*);
+        $crate::matrix_fill!($m, $y, $x + 1, $($rest)*);
     }};
 
     ($m: expr, $y: expr,) => {};
@@ -32,7 +32,7 @@ macro_rules! matrix_fill {
 #[macro_export]
 macro_rules! vector {
     ($h: tt [$($val: expr),* $(,)?]) => {
-        matrix!(1 x $h $([$val])*)
+        $crate::matrix!(1 x $h $([$val])*)
     };
 }
 
