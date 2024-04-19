@@ -2,5 +2,8 @@
 name = "smolmatrix"
 version = "0.1.0"
 edition = "2021"
+description = "Small simple matrix library"
+license = "BSD-2-Clause-Patent"
+repository = "https://github.com/funnsam/smolmatrix"
 
 [dependencies]
