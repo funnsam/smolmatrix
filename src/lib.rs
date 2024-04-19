@@ -49,6 +49,55 @@ impl<const W: usize, const H: usize> Matrix<W, H> {
             inner: [[0.0; W]; H],
         }
     }
+
+    pub fn transpose(&self) -> Matrix<H, W> {
+        let mut iters = self.inner.map(|r| r.into_iter());
+        let m = core::array::from_fn(|_| core::array::from_fn(|i| iters[i].next().unwrap()));
+        Matrix { inner: m }
+    }
+}
+
+impl<const H: usize> Vector<H> {
+    pub fn length(&self) -> f32 {
+        self.length_squared().sqrt()
+    }
+
+    pub fn length_squared(&self) -> f32 {
+        let mut acc = 0.0;
+
+        for y in 0..H {
+            acc += self[(0, y)] * self[(0, y)];
+        }
+
+        acc
+    }
+
+    pub fn magnitude(self) -> Self {
+        let len = self.length();
+        self / len
+    }
+
+    pub fn dot(&self, b: &Self) -> f32 {
+        let mut dot = 0.0;
+
+        for y in 0..H {
+            dot += self[(0, y)] * b[(0, y)];
+        }
+
+        dot
+    }
+}
+
+impl Vector<3> {
+    pub fn cross(&self, b: &Self) -> Self {
+        vector!(
+            3 [
+                self[1] * b[2] - self[2] * b[1],
+                self[2] * b[0] - self[0] * b[2],
+                self[0] * b[1] - self[1] * b[0],
+            ]
+        )
+    }
 }
 
 impl<const W: usize, const H: usize> Index<(usize, usize)> for Matrix<W, H> {
@@ -62,6 +111,20 @@ impl<const W: usize, const H: usize> Index<(usize, usize)> for Matrix<W, H> {
 impl<const W: usize, const H: usize> IndexMut<(usize, usize)> for Matrix<W, H> {
     fn index_mut(&mut self, i: (usize, usize)) -> &mut f32 {
         &mut self.inner[i.1][i.0]
+    }
+}
+
+impl<const H: usize> Index<usize> for Vector<H> {
+    type Output = f32;
+
+    fn index(&self, i: usize) -> &f32 {
+        &self.inner[i][0]
+    }
+}
+
+impl<const H: usize> IndexMut<usize> for Vector<H> {
+    fn index_mut(&mut self, i: usize) -> &mut f32 {
+        &mut self.inner[i][0]
     }
 }
 
@@ -106,6 +169,62 @@ impl<const W: usize, const H: usize> fmt::Display for Matrix<W, H> {
     }
 }
 
+impl<const W: usize, const H: usize> Add<&Self> for Matrix<W, H> {
+    type Output = Matrix<W, H>;
+
+    fn add(mut self, b: &Matrix<W, H>) -> Matrix<W, H> {
+        for (yi, y) in self.inner.iter_mut().enumerate() {
+            for (xi, x) in y.iter_mut().enumerate() {
+                *x += b[(xi, yi)];
+            }
+        }
+
+        self
+    }
+}
+
+impl<const W: usize, const H: usize> Add<f32> for Matrix<W, H> {
+    type Output = Matrix<W, H>;
+
+    fn add(mut self, b: f32) -> Matrix<W, H> {
+        for i in self.inner.iter_mut() {
+            for j in i.iter_mut() {
+                *j += b;
+            }
+        }
+
+        self
+    }
+}
+
+impl<const W: usize, const H: usize> Sub<&Self> for Matrix<W, H> {
+    type Output = Matrix<W, H>;
+
+    fn sub(mut self, b: &Matrix<W, H>) -> Matrix<W, H> {
+        for (yi, y) in self.inner.iter_mut().enumerate() {
+            for (xi, x) in y.iter_mut().enumerate() {
+                *x -= b[(xi, yi)];
+            }
+        }
+
+        self
+    }
+}
+
+impl<const W: usize, const H: usize> Sub<f32> for Matrix<W, H> {
+    type Output = Matrix<W, H>;
+
+    fn sub(mut self, b: f32) -> Matrix<W, H> {
+        for i in self.inner.iter_mut() {
+            for j in i.iter_mut() {
+                *j -= b;
+            }
+        }
+
+        self
+    }
+}
+
 impl<const WAHB: usize, const HA: usize, const WB: usize> Mul<&Matrix<WB, WAHB>>
     for &Matrix<WAHB, HA>
 {
@@ -130,17 +249,25 @@ impl<const WAHB: usize, const HA: usize, const WB: usize> Mul<&Matrix<WB, WAHB>>
     }
 }
 
-impl<const W: usize, const H: usize> Add<&Self> for Matrix<W, H> {
+impl<const W: usize, const H: usize> Mul<f32> for Matrix<W, H> {
     type Output = Matrix<W, H>;
 
-    fn add(mut self, b: &Matrix<W, H>) -> Matrix<W, H> {
-        for (yi, y) in self.inner.iter_mut().enumerate() {
-            for (xi, x) in y.iter_mut().enumerate() {
-                *x += b[(xi, yi)];
+    fn mul(mut self, b: f32) -> Matrix<W, H> {
+        for i in self.inner.iter_mut() {
+            for j in i.iter_mut() {
+                *j *= b;
             }
         }
 
         self
+    }
+}
+
+impl<const H: usize> Div<f32> for Vector<H> {
+    type Output = Vector<H>;
+
+    fn div(self, b: f32) -> Vector<H> {
+        self * (1.0 / b)
     }
 }
 
@@ -173,6 +300,13 @@ mod tests {
             [140.0, 146.0]
             [320.0, 335.0]
         ));
+
+        let d = c * 2.0;
+        assert_eq!(d, matrix!(
+                2 x 2
+                [280.0, 292.0]
+                [640.0, 670.0]
+        ));
     }
 
     #[test]
@@ -203,16 +337,26 @@ mod tests {
     }
 
     #[test]
-    fn vec_dot() {
-        let a = matrix!(
-            3 x 1
+    fn matrix_transpose() {
+        let m = matrix!(
+            3 x 2
             [1.0, 2.0, 3.0]
-        );
-        let b = vector!(
-            3
-            [4.0, -5.0, 6.0]
+            [4.0, 5.0, 6.0]
         );
 
-        assert_eq!(&a * &b, matrix!(1 x 1 [12.0]));
+        assert_eq!(m.transpose(), matrix!(
+            2 x 3
+            [1.0, 4.0]
+            [2.0, 5.0]
+            [3.0, 6.0]
+        ));
+    }
+
+    #[test]
+    fn vector3_cross() {
+        let a = vector!(3 [5.0, 6.0, 2.0]);
+        let b = vector!(3 [1.0, 1.0, 1.0]);
+
+        assert_eq!(a.cross(&b), vector!(3 [4.0, -3.0, -1.0]));
     }
 }
