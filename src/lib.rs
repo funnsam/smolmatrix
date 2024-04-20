@@ -72,7 +72,12 @@ impl<const H: usize> Vector<H> {
         acc
     }
 
+    #[deprecated]
     pub fn magnitude(self) -> Self {
+        self.unit()
+    }
+
+    pub fn unit(self) -> Self {
         let len = self.length();
         self / len
     }
@@ -263,10 +268,22 @@ impl<const W: usize, const H: usize> Mul<f32> for Matrix<W, H> {
     }
 }
 
-impl<const H: usize> Div<f32> for Vector<H> {
+impl<const H: usize> Mul<&Self> for Vector<H> {
     type Output = Vector<H>;
 
-    fn div(self, b: f32) -> Vector<H> {
+    fn mul(mut self, b: &Self) -> Vector<H> {
+        for i in 0..H {
+            self[i] *= b[i];
+        }
+
+        self
+    }
+}
+
+impl<const W: usize, const H: usize> Div<f32> for Matrix<W, H> {
+    type Output = Matrix<W, H>;
+
+    fn div(self, b: f32) -> Matrix<W, H> {
         self * (1.0 / b)
     }
 }
