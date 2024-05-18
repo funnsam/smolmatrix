@@ -57,15 +57,23 @@ impl<const W: usize, const H: usize> Matrix<W, H> {
     }
 
     pub fn map_each<F: Fn(&mut f32)>(mut self, f: F) -> Self {
-        let f = &f;
-        self.inner.iter_mut().for_each(|i| i.iter_mut().for_each(f));
+        self.map_each_in_place(f);
         self
     }
 
     pub fn map_zip_ref<F: Fn((&mut f32, &f32))>(mut self, r: &Self, f: F) -> Self {
+        self.map_zip_ref_in_place(r, f);
+        self
+    }
+
+    pub fn map_each_in_place<F: Fn(&mut f32)>(&mut self, f: F) {
+        let f = &f;
+        self.inner.iter_mut().for_each(|i| i.iter_mut().for_each(f));
+    }
+
+    pub fn map_zip_ref_in_place<F: Fn((&mut f32, &f32))>(&mut self, r: &Self, f: F) {
         let f = &f;
         self.inner.iter_mut().zip(r.inner.iter()).for_each(|(i, j)| i.iter_mut().zip(j.iter()).for_each(f));
-        self
     }
 }
 
@@ -200,14 +208,8 @@ impl<const W: usize, const H: usize> Add<&Self> for Matrix<W, H> {
 impl<const W: usize, const H: usize> Add<f32> for Matrix<W, H> {
     type Output = Matrix<W, H>;
 
-    fn add(mut self, b: f32) -> Matrix<W, H> {
-        for i in self.inner.iter_mut() {
-            for j in i.iter_mut() {
-                *j += b;
-            }
-        }
-
-        self
+    fn add(self, b: f32) -> Matrix<W, H> {
+        self.map_each(|i| *i += b)
     }
 }
 
@@ -222,14 +224,8 @@ impl<const W: usize, const H: usize> Sub<&Self> for Matrix<W, H> {
 impl<const W: usize, const H: usize> Sub<f32> for Matrix<W, H> {
     type Output = Matrix<W, H>;
 
-    fn sub(mut self, b: f32) -> Matrix<W, H> {
-        for i in self.inner.iter_mut() {
-            for j in i.iter_mut() {
-                *j -= b;
-            }
-        }
-
-        self
+    fn sub(self, b: f32) -> Matrix<W, H> {
+        self.map_each(|i| *i += b)
     }
 }
 
@@ -294,6 +290,30 @@ impl<const W: usize, const H: usize> Neg for Matrix<W, H> {
 
     fn neg(self) -> Self::Output {
         self.map_each(|i| *i = -*i)
+    }
+}
+
+impl<const W: usize, const H: usize> AddAssign<&Self> for Matrix<W, H> {
+    fn add_assign(&mut self, b: &Self) {
+        self.map_zip_ref_in_place(b, |(i, j)| *i += j)
+    }
+}
+
+impl<const W: usize, const H: usize> SubAssign<&Self> for Matrix<W, H> {
+    fn sub_assign(&mut self, b: &Self) {
+        self.map_zip_ref_in_place(b, |(i, j)| *i -= j)
+    }
+}
+
+impl<const W: usize, const H: usize> MulAssign<&Self> for Matrix<W, H> {
+    fn mul_assign(&mut self, b: &Self) {
+        self.map_zip_ref_in_place(b, |(i, j)| *i *= j)
+    }
+}
+
+impl<const W: usize, const H: usize> DivAssign<&Self> for Matrix<W, H> {
+    fn div_assign(&mut self, b: &Self) {
+        self.map_zip_ref_in_place(b, |(i, j)| *i /= j)
     }
 }
 
