@@ -1,4 +1,4 @@
-#![cfg_attr(test, no_std)]
+#![cfg_attr(not(any(test, feature = "std")), no_std)]
 
 use core::fmt;
 use core::ops::*;
@@ -61,9 +61,16 @@ impl<const W: usize, const H: usize> Matrix<W, H> {
         self.inner.iter_mut().for_each(|i| i.iter_mut().for_each(f));
         self
     }
+
+    pub fn map_zip_ref<F: Fn((&mut f32, &f32))>(mut self, r: &Self, f: F) -> Self {
+        let f = &f;
+        self.inner.iter_mut().zip(r.inner.iter()).for_each(|(i, j)| i.iter_mut().zip(j.iter()).for_each(f));
+        self
+    }
 }
 
 impl<const H: usize> Vector<H> {
+    #[cfg(feature = "std")]
     pub fn length(&self) -> f32 {
         self.length_squared().sqrt()
     }
@@ -78,11 +85,13 @@ impl<const H: usize> Vector<H> {
         acc
     }
 
+    #[cfg(feature = "std")]
     #[deprecated]
     pub fn magnitude(self) -> Self {
         self.unit()
     }
 
+    #[cfg(feature = "std")]
     pub fn unit(self) -> Self {
         let len = self.length();
         self / len
@@ -183,14 +192,8 @@ impl<const W: usize, const H: usize> fmt::Display for Matrix<W, H> {
 impl<const W: usize, const H: usize> Add<&Self> for Matrix<W, H> {
     type Output = Matrix<W, H>;
 
-    fn add(mut self, b: &Matrix<W, H>) -> Matrix<W, H> {
-        for (yi, y) in self.inner.iter_mut().enumerate() {
-            for (xi, x) in y.iter_mut().enumerate() {
-                *x += b[(xi, yi)];
-            }
-        }
-
-        self
+    fn add(self, b: &Matrix<W, H>) -> Matrix<W, H> {
+        self.map_zip_ref(b, |(i, j)| *i += j)
     }
 }
 
@@ -211,14 +214,8 @@ impl<const W: usize, const H: usize> Add<f32> for Matrix<W, H> {
 impl<const W: usize, const H: usize> Sub<&Self> for Matrix<W, H> {
     type Output = Matrix<W, H>;
 
-    fn sub(mut self, b: &Matrix<W, H>) -> Matrix<W, H> {
-        for (yi, y) in self.inner.iter_mut().enumerate() {
-            for (xi, x) in y.iter_mut().enumerate() {
-                *x -= b[(xi, yi)];
-            }
-        }
-
-        self
+    fn sub(self, b: &Matrix<W, H>) -> Matrix<W, H> {
+        self.map_zip_ref(b, |(i, j)| *i -= j)
     }
 }
 
@@ -263,26 +260,16 @@ impl<const WAHB: usize, const HA: usize, const WB: usize> Mul<&Matrix<WB, WAHB>>
 impl<const W: usize, const H: usize> Mul<f32> for Matrix<W, H> {
     type Output = Matrix<W, H>;
 
-    fn mul(mut self, b: f32) -> Matrix<W, H> {
-        for i in self.inner.iter_mut() {
-            for j in i.iter_mut() {
-                *j *= b;
-            }
-        }
-
-        self
+    fn mul(self, b: f32) -> Matrix<W, H> {
+        self.map_each(|i| *i *= b)
     }
 }
 
 impl<const H: usize> Mul<&Self> for Vector<H> {
     type Output = Vector<H>;
 
-    fn mul(mut self, b: &Self) -> Vector<H> {
-        for i in 0..H {
-            self[i] *= b[i];
-        }
-
-        self
+    fn mul(self, b: &Self) -> Vector<H> {
+        self.map_zip_ref(b, |(i, j)| *i *= j)
     }
 }
 
@@ -291,6 +278,14 @@ impl<const W: usize, const H: usize> Div<f32> for Matrix<W, H> {
 
     fn div(self, b: f32) -> Matrix<W, H> {
         self * (1.0 / b)
+    }
+}
+
+impl<const W: usize, const H: usize> Div<&Self> for Matrix<W, H> {
+    type Output = Matrix<W, H>;
+
+    fn div(self, b: &Matrix<W, H>) -> Matrix<W, H> {
+        self.map_zip_ref(b, |(i, j)| *i /= j)
     }
 }
 
