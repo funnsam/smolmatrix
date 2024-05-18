@@ -1,4 +1,4 @@
-#![cfg_attr(no_std, test)]
+#![cfg_attr(test, no_std)]
 
 use core::fmt;
 use core::ops::*;
@@ -54,6 +54,12 @@ impl<const W: usize, const H: usize> Matrix<W, H> {
         let mut iters = self.inner.map(|r| r.into_iter());
         let m = core::array::from_fn(|_| core::array::from_fn(|i| iters[i].next().unwrap()));
         Matrix { inner: m }
+    }
+
+    pub fn map_each<F: Fn(&mut f32)>(mut self, f: F) -> Self {
+        let f = &f;
+        self.inner.iter_mut().for_each(|i| i.iter_mut().for_each(f));
+        self
     }
 }
 
@@ -285,6 +291,14 @@ impl<const W: usize, const H: usize> Div<f32> for Matrix<W, H> {
 
     fn div(self, b: f32) -> Matrix<W, H> {
         self * (1.0 / b)
+    }
+}
+
+impl<const W: usize, const H: usize> Neg for Matrix<W, H> {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        self.map_each(|i| *i = -*i)
     }
 }
 
