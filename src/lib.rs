@@ -225,7 +225,7 @@ impl<const W: usize, const H: usize> Sub<f32> for Matrix<W, H> {
     type Output = Matrix<W, H>;
 
     fn sub(self, b: f32) -> Matrix<W, H> {
-        self.map_each(|i| *i += b)
+        self.map_each(|i| *i -= b)
     }
 }
 
@@ -317,6 +317,30 @@ impl<const W: usize, const H: usize> DivAssign<&Self> for Matrix<W, H> {
     }
 }
 
+impl<const W: usize, const H: usize> AddAssign<f32> for Matrix<W, H> {
+    fn add_assign(&mut self, b: f32) {
+        self.map_each_in_place(|i| *i += b)
+    }
+}
+
+impl<const W: usize, const H: usize> SubAssign<f32> for Matrix<W, H> {
+    fn sub_assign(&mut self, b: f32) {
+        self.map_each_in_place(|i| *i -= b)
+    }
+}
+
+impl<const W: usize, const H: usize> MulAssign<f32> for Matrix<W, H> {
+    fn mul_assign(&mut self, b: f32) {
+        self.map_each_in_place(|i| *i *= b)
+    }
+}
+
+impl<const W: usize, const H: usize> DivAssign<f32> for Matrix<W, H> {
+    fn div_assign(&mut self, b: f32) {
+        self.map_each_in_place(|i| *i /= b)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -404,5 +428,17 @@ mod tests {
         let b = vector!(3 [1.0, 1.0, 1.0]);
 
         assert_eq!(a.cross(&b), vector!(3 [4.0, -3.0, -1.0]));
+    }
+
+    #[test]
+    fn add_assi() {
+        let mut a = vector!(3 [5.0, 6.0, 2.0]);
+        let b = vector!(3 [1.0, 1.0, 1.0]);
+
+        a += &b;
+        assert_eq!(a, vector!(3 [6.0, 7.0, 3.0]));
+
+        a += 1.0;
+        assert_eq!(a, vector!(3 [7.0, 8.0, 4.0]));
     }
 }
