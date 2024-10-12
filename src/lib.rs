@@ -6,7 +6,7 @@ use core::ops::*;
 #[macro_export]
 macro_rules! matrix {
     ($w: tt x $h: tt $([$($v: expr),* $(,)?])*) => {{
-        let mut m = Matrix::<$w, $h>::new_zeroed();
+        let mut m = $crate::Matrix::<$w, $h>::new_zeroed();
 
         $crate::matrix_fill!(m, 0, $([$($v,)*])*);
 
