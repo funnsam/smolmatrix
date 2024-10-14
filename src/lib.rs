@@ -31,9 +31,24 @@ macro_rules! matrix_fill {
 
 #[macro_export]
 macro_rules! vector {
-    ($h: tt [$($val: expr),* $(,)?]) => {
+    ($h: tt [$($val: expr),* $(,)?]) => {{
         $crate::matrix!(1 x $h $([$val])*)
-    };
+    }};
+}
+
+#[macro_export]
+macro_rules! vector_swap {
+    (@ $at: expr, $vector: expr, $orig: expr, $idx: tt $($rest: tt)*) => {{
+        $vector[$at] = $orig[$idx];
+        crate::vector_swap!(@ $at + 1, $vector, $orig, $($rest)*);
+    }};
+    (@ $at: expr, $vector: expr, $orig: expr,) => {};
+    ($vector: expr, $($idx: tt)*) => {{
+        let mut og = $vector;
+        let mut v = $vector.clone();
+        crate::vector_swap!(@ 0, v, og, $($idx)*);
+        v
+    }};
 }
 
 pub type Vector<const H: usize> = Matrix<1, H>;
@@ -114,6 +129,21 @@ impl<const H: usize> Vector<H> {
 
         dot
     }
+
+    pub fn x(&self) -> f32 { self[0] }
+    pub fn y(&self) -> f32 { self[1] }
+    pub fn z(&self) -> f32 { self[2] }
+    pub fn w(&self) -> f32 { self[3] }
+
+    pub fn x_ref(&self) -> &f32 { &self[0] }
+    pub fn y_ref(&self) -> &f32 { &self[1] }
+    pub fn z_ref(&self) -> &f32 { &self[2] }
+    pub fn w_ref(&self) -> &f32 { &self[3] }
+
+    pub fn x_mut(&mut self) -> &mut f32 { &mut self[0] }
+    pub fn y_mut(&mut self) -> &mut f32 { &mut self[1] }
+    pub fn z_mut(&mut self) -> &mut f32 { &mut self[2] }
+    pub fn w_mut(&mut self) -> &mut f32 { &mut self[3] }
 }
 
 impl Vector<3> {
