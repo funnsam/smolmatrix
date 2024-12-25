@@ -1,6 +1,8 @@
 <!-- updated by cargo-release -->
 
 # Unreleased
+- Added `serde` feature
+- Added `FromIterator` for `Matrix`
 
 # 0.1.8
 - Added `x/y/z/w(_ref/mut)` methods to vectors
