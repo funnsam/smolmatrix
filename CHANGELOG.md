@@ -1,6 +1,8 @@
 <!-- updated by cargo-release -->
 
 # Unreleased
+
+# 0.1.9
 - Added `serde` feature
 - Added `FromIterator` for `Matrix`
 
