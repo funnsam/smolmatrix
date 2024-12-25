@@ -7,7 +7,12 @@ license = "BSD-2-Clause-Patent"
 repository = "https://github.com/funnsam/smolmatrix"
 
 [dependencies]
+serde = { version = "1.0.216", optional = true, default-features = false }
 
 [features]
-default = ["std"]
+default = ["std", "serde"]
 std = []
+serde = ["dep:serde"]
+
+[dev-dependencies]
+serde_test = "1.0.177"

@@ -58,6 +58,73 @@ pub struct Matrix<const W: usize, const H: usize> {
     pub inner: [[f32; W]; H],
 }
 
+#[cfg(feature = "serde")]
+impl<const W: usize, const H: usize> serde::Serialize for Matrix<W, H> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeTuple;
+
+        let mut t = serializer.serialize_tuple(W * H)?;
+        for y in 0..H {
+            for x in 0..W {
+                t.serialize_element(&self[(x, y)])?;
+            }
+        }
+        t.end()
+    }
+}
+
+#[cfg(feature = "serde")]
+struct Visitor<const W: usize, const H: usize> {
+    _phantom: core::marker::PhantomData<Matrix<W, H>>,
+}
+
+#[cfg(feature = "serde")]
+impl<'de, const W: usize, const H: usize> serde::de::Visitor<'de> for Visitor<W, H> {
+    type Value = [[f32; W]; H];
+
+    fn expecting(&self, formatter: &mut core::fmt::Formatter) -> fmt::Result {
+        write!(formatter, "{} f32s", W * H)
+    }
+
+    fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+        let mut ret = [[0.0; W]; H];
+
+        for y in 0..H {
+            for x in 0..W {
+                ret[y][x] = seq.next_element()?.ok_or_else(|| serde::de::Error::invalid_length(y * H + x, &self))?;
+            }
+        }
+
+        Ok(ret)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de, const W: usize, const H: usize> serde::Deserialize<'de> for Matrix<W, H> {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        Ok(Self {
+            inner: deserializer.deserialize_tuple(W * H, Visitor {
+                _phantom: core::marker::PhantomData,
+            })?,
+        })
+    }
+}
+
+impl<const W: usize, const H: usize> FromIterator<f32> for Matrix<W, H> {
+    fn from_iter<T: IntoIterator<Item = f32>>(iter: T) -> Self {
+        let mut iter = iter.into_iter();
+        let mut m = Self::new_zeroed();
+
+        for y in 0..H {
+            for x in 0..W {
+                m[(x, y)] = iter.next().unwrap();
+            }
+        }
+
+        m
+    }
+}
+
 impl<const W: usize, const H: usize> Matrix<W, H> {
     pub const fn new_zeroed() -> Self {
         Self {
@@ -470,5 +537,30 @@ mod tests {
 
         a += 1.0;
         assert_eq!(a, vector!(3 [7.0, 8.0, 4.0]));
+    }
+
+    #[test]
+    #[cfg(feature = "serde")]
+    fn serde() {
+        use serde_test::*;
+
+        let a = matrix!(
+            3 x 2
+            [1.0, 3.0, 5.0]
+            [2.0, 4.0, 6.0]
+        );
+        assert_tokens(
+            &a,
+            &[
+                Token::Tuple { len: 6 },
+                Token::F32(1.0),
+                Token::F32(3.0),
+                Token::F32(5.0),
+                Token::F32(2.0),
+                Token::F32(4.0),
+                Token::F32(6.0),
+                Token::TupleEnd,
+            ],
+        );
     }
 }
