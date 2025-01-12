@@ -1,8 +1,88 @@
 #![cfg_attr(not(any(test, feature = "std")), no_std)]
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
 
-use core::fmt;
-use core::ops::*;
+mod index;
+mod ops;
 
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Tensor<D: Dimension> where [f32; D::NUM_ELEMENTS]: Sized {
+    pub inner: [f32; D::NUM_ELEMENTS],
+}
+
+pub trait Dimension {
+    const ORDER: usize;
+    const DIMENSIONS: &[usize];
+    const NUM_ELEMENTS: usize;
+}
+
+impl<D: Dimension> Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
+    pub fn map_each<F: Fn(f32) -> f32>(mut self, f: F) -> Self {
+        self.map_each_in_place(f);
+        self
+    }
+
+    pub fn map_zip_ref<F: Fn(f32, f32) -> f32>(mut self, r: &Self, f: F) -> Self {
+        self.map_zip_ref_in_place(r, f);
+        self
+    }
+
+    pub fn map_each_in_place<F: Fn(f32) -> f32>(&mut self, f: F) {
+        let f = &f;
+        self.inner.iter_mut().for_each(|i| *i = f(*i));
+    }
+
+    pub fn map_zip_ref_in_place<F: Fn(f32, f32) -> f32>(&mut self, r: &Self, f: F) {
+        let f = &f;
+        self.inner.iter_mut().zip(r.inner.iter()).for_each(|(i, j)| *i = f(*i, *j));
+    }
+}
+
+macro_rules! dim {
+    (conv_down $fn:tt => $tn:tt $($ti:tt),*) => {
+        impl<$(const $ti: usize),*> From<Tensor<$fn<$($ti,)* 1>>> for Tensor<$tn<$($ti),*>> where
+            [f32; $fn::<$($ti,)* 1>::NUM_ELEMENTS]: Sized,
+            [f32; $tn::<$($ti),*>::NUM_ELEMENTS]: Sized,
+        {
+            fn from(value: Tensor<$fn<$($ti,)* 1>>) -> Self {
+                // SAFETY: A tensor of size [.., 1] and [..] is the same
+                unsafe {
+                    Self { inner: *core::mem::transmute::<&[f32; <$fn::<$($ti,)* 1> as Dimension>::NUM_ELEMENTS], &[f32; <$tn::<$($ti),*> as Dimension>::NUM_ELEMENTS]>(&value.inner) }
+                }
+            }
+        }
+    };
+    ($n:tt $t:tt $d:tt $($i:tt),*) => {
+        /// Marker object representing a $d-dimensional size. This struct contains a private empty
+        /// tuple so that it isn't constructable.
+        #[derive(Debug, Clone, PartialEq)]
+        #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+        pub struct $n<$(const $i: usize),*>(pub(self) ());
+
+        impl<$(const $i: usize),*> Dimension for $n<$($i),*> {
+            const ORDER: usize = $d;
+            const DIMENSIONS: &[usize] = &[$($i),*];
+            const NUM_ELEMENTS: usize = 1 $(* $i)*;
+        }
+
+        /// A $d-th order tensor.
+        pub type $t<$(const $i: usize),*> = Tensor<$n<$($i),*>>;
+    };
+}
+
+pub type Vector<const H: usize> = Matrix<1, H>;
+
+dim!(Dim0 Scalar 0);
+dim!(Dim1 HVector 1 W);
+dim!(Dim2 Matrix 2 W, H);
+dim!(Dim3 Tensor3 3 W, H, D);
+
+dim!(conv_down Dim1 => Dim0);
+dim!(conv_down Dim2 => Dim1 W);
+dim!(conv_down Dim3 => Dim2 W, H);
+
+/*
 #[macro_export]
 macro_rules! matrix {
     ($w: tt x $h: tt $([$($v: expr),* $(,)?])*) => {{
@@ -49,65 +129,6 @@ macro_rules! vector_swap {
         crate::vector_swap!(@ 0, v, og, $($idx)*);
         v
     }};
-}
-
-pub type Vector<const H: usize> = Matrix<1, H>;
-
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub struct Matrix<const W: usize, const H: usize> {
-    pub inner: [[f32; W]; H],
-}
-
-#[cfg(feature = "serde")]
-impl<const W: usize, const H: usize> serde::Serialize for Matrix<W, H> {
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        use serde::ser::SerializeTuple;
-
-        let mut t = serializer.serialize_tuple(W * H)?;
-        for y in 0..H {
-            for x in 0..W {
-                t.serialize_element(&self[(x, y)])?;
-            }
-        }
-        t.end()
-    }
-}
-
-#[cfg(feature = "serde")]
-struct Visitor<const W: usize, const H: usize> {
-    _phantom: core::marker::PhantomData<Matrix<W, H>>,
-}
-
-#[cfg(feature = "serde")]
-impl<'de, const W: usize, const H: usize> serde::de::Visitor<'de> for Visitor<W, H> {
-    type Value = [[f32; W]; H];
-
-    fn expecting(&self, formatter: &mut core::fmt::Formatter) -> fmt::Result {
-        write!(formatter, "{} f32s", W * H)
-    }
-
-    fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
-        let mut ret = [[0.0; W]; H];
-
-        for y in 0..H {
-            for x in 0..W {
-                ret[y][x] = seq.next_element()?.ok_or_else(|| serde::de::Error::invalid_length(y * H + x, &self))?;
-            }
-        }
-
-        Ok(ret)
-    }
-}
-
-#[cfg(feature = "serde")]
-impl<'de, const W: usize, const H: usize> serde::Deserialize<'de> for Matrix<W, H> {
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        Ok(Self {
-            inner: deserializer.deserialize_tuple(W * H, Visitor {
-                _phantom: core::marker::PhantomData,
-            })?,
-        })
-    }
 }
 
 impl<const W: usize, const H: usize> FromIterator<f32> for Matrix<W, H> {
@@ -294,149 +315,6 @@ impl<const W: usize, const H: usize> fmt::Display for Matrix<W, H> {
     }
 }
 
-impl<const W: usize, const H: usize> Add<&Self> for Matrix<W, H> {
-    type Output = Matrix<W, H>;
-
-    fn add(self, b: &Matrix<W, H>) -> Matrix<W, H> {
-        self.map_zip_ref(b, |(i, j)| *i += j)
-    }
-}
-
-impl<const W: usize, const H: usize> Add<f32> for Matrix<W, H> {
-    type Output = Matrix<W, H>;
-
-    fn add(self, b: f32) -> Matrix<W, H> {
-        self.map_each(|i| *i += b)
-    }
-}
-
-impl<const W: usize, const H: usize> Sub<&Self> for Matrix<W, H> {
-    type Output = Matrix<W, H>;
-
-    fn sub(self, b: &Matrix<W, H>) -> Matrix<W, H> {
-        self.map_zip_ref(b, |(i, j)| *i -= j)
-    }
-}
-
-impl<const W: usize, const H: usize> Sub<f32> for Matrix<W, H> {
-    type Output = Matrix<W, H>;
-
-    fn sub(self, b: f32) -> Matrix<W, H> {
-        self.map_each(|i| *i -= b)
-    }
-}
-
-impl<const WAHB: usize, const HA: usize, const WB: usize> Mul<&Matrix<WB, WAHB>>
-    for &Matrix<WAHB, HA>
-{
-    type Output = Matrix<WB, HA>;
-
-    fn mul(self, b: &Matrix<WB, WAHB>) -> Matrix<WB, HA> {
-        let mut c = Matrix::new_zeroed();
-
-        for y in 0..HA {
-            for x in 0..WB {
-                let mut dot = 0.0;
-
-                for i in 0..WAHB {
-                    dot += self[(i, y)] * b[(x, i)];
-                }
-
-                c[(x, y)] = dot;
-            }
-        }
-
-        c
-    }
-}
-
-impl<const W: usize, const H: usize> Mul<f32> for Matrix<W, H> {
-    type Output = Matrix<W, H>;
-
-    fn mul(self, b: f32) -> Matrix<W, H> {
-        self.map_each(|i| *i *= b)
-    }
-}
-
-impl<const H: usize> Mul<&Self> for Vector<H> {
-    type Output = Vector<H>;
-
-    fn mul(self, b: &Self) -> Vector<H> {
-        self.map_zip_ref(b, |(i, j)| *i *= j)
-    }
-}
-
-impl<const W: usize, const H: usize> Div<f32> for Matrix<W, H> {
-    type Output = Matrix<W, H>;
-
-    fn div(self, b: f32) -> Matrix<W, H> {
-        self * (1.0 / b)
-    }
-}
-
-impl<const W: usize, const H: usize> Div<&Self> for Matrix<W, H> {
-    type Output = Matrix<W, H>;
-
-    fn div(self, b: &Matrix<W, H>) -> Matrix<W, H> {
-        self.map_zip_ref(b, |(i, j)| *i /= j)
-    }
-}
-
-impl<const W: usize, const H: usize> Neg for Matrix<W, H> {
-    type Output = Self;
-
-    fn neg(self) -> Self::Output {
-        self.map_each(|i| *i = -*i)
-    }
-}
-
-impl<const W: usize, const H: usize> AddAssign<&Self> for Matrix<W, H> {
-    fn add_assign(&mut self, b: &Self) {
-        self.map_zip_ref_in_place(b, |(i, j)| *i += j)
-    }
-}
-
-impl<const W: usize, const H: usize> SubAssign<&Self> for Matrix<W, H> {
-    fn sub_assign(&mut self, b: &Self) {
-        self.map_zip_ref_in_place(b, |(i, j)| *i -= j)
-    }
-}
-
-impl<const W: usize, const H: usize> MulAssign<&Self> for Matrix<W, H> {
-    fn mul_assign(&mut self, b: &Self) {
-        self.map_zip_ref_in_place(b, |(i, j)| *i *= j)
-    }
-}
-
-impl<const W: usize, const H: usize> DivAssign<&Self> for Matrix<W, H> {
-    fn div_assign(&mut self, b: &Self) {
-        self.map_zip_ref_in_place(b, |(i, j)| *i /= j)
-    }
-}
-
-impl<const W: usize, const H: usize> AddAssign<f32> for Matrix<W, H> {
-    fn add_assign(&mut self, b: f32) {
-        self.map_each_in_place(|i| *i += b)
-    }
-}
-
-impl<const W: usize, const H: usize> SubAssign<f32> for Matrix<W, H> {
-    fn sub_assign(&mut self, b: f32) {
-        self.map_each_in_place(|i| *i -= b)
-    }
-}
-
-impl<const W: usize, const H: usize> MulAssign<f32> for Matrix<W, H> {
-    fn mul_assign(&mut self, b: f32) {
-        self.map_each_in_place(|i| *i *= b)
-    }
-}
-
-impl<const W: usize, const H: usize> DivAssign<f32> for Matrix<W, H> {
-    fn div_assign(&mut self, b: f32) {
-        self.map_each_in_place(|i| *i /= b)
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -564,3 +442,4 @@ mod tests {
         );
     }
 }
+*/
