@@ -142,3 +142,205 @@ impl<D: Dimension> Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
         self.map_zip_ref(rhs, |i, j| i * j)
     }
 }
+
+impl<const W: usize, const H: usize> Matrix<W, H> where [f32; <Dim2<W, H> as Dimension>::NUM_ELEMENTS]: Sized {
+    pub fn transpose(self) -> Matrix<H, W> where [f32; <Dim2<H, W> as Dimension>::NUM_ELEMENTS]: Sized {
+        let mut inner = [0.0; <Dim2<H, W> as Dimension>::NUM_ELEMENTS];
+
+        for y in 0..H {
+            for x in 0..W {
+                inner[y + x * H] = self.inner[x + y * W];
+            }
+        }
+
+        Matrix { inner }
+    }
+}
+
+impl<const W: usize> HVector<W> where [f32; <Dim1<W> as Dimension>::NUM_ELEMENTS]: Sized {
+    #[cfg(feature = "std")]
+    pub fn length(&self) -> f32 {
+        self.length_squared().sqrt()
+    }
+
+    pub fn length_squared(&self) -> f32 {
+        let mut acc = 0.0;
+
+        for x in 0..W {
+            acc += self[x] * self[x];
+        }
+
+        acc
+    }
+
+    #[cfg(feature = "std")]
+    pub fn unit(self) -> Self {
+        let len = self.length();
+        self / len
+    }
+
+    pub fn dot(&self, b: &Self) -> f32 {
+        let mut dot = 0.0;
+
+        for x in 0..W {
+            dot += self[x] * b[x];
+        }
+
+        dot
+    }
+}
+
+impl<const H: usize> Vector<H> where [f32; <Dim2<1, H> as Dimension>::NUM_ELEMENTS]: Sized {
+    #[cfg(feature = "std")]
+    pub fn length(&self) -> f32 {
+        self.length_squared().sqrt()
+    }
+
+    pub fn length_squared(&self) -> f32 {
+        let mut acc = 0.0;
+
+        for y in 0..H {
+            acc += self[y] * self[y];
+        }
+
+        acc
+    }
+
+    #[cfg(feature = "std")]
+    pub fn unit(self) -> Self {
+        let len = self.length();
+        self / len
+    }
+
+    pub fn dot(&self, b: &Self) -> f32 {
+        let mut dot = 0.0;
+
+        for y in 0..H {
+            dot += self[y] * b[y];
+        }
+
+        dot
+    }
+}
+
+impl Vector<3> {
+    pub fn cross(&self, b: &Self) -> Self {
+        vector!(3 [
+            self[1] * b[2] - self[2] * b[1],
+            self[2] * b[0] - self[0] * b[2],
+            self[0] * b[1] - self[1] * b[0],
+        ])
+    }
+}
+
+impl HVector<3> {
+    pub fn cross(&self, b: &Self) -> Self {
+        hvector! [
+            self[1] * b[2] - self[2] * b[1],
+            self[2] * b[0] - self[0] * b[2],
+            self[0] * b[1] - self[1] * b[0],
+        ]
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn matrix_mul() {
+    let a = matrix!(
+        3 x 2
+        [1.0, 2.0, 3.0]
+        [4.0, 5.0, 6.0]
+    );
+    let b = matrix!(
+        2 x 3
+        [10.0, 11.0]
+        [20.0, 21.0]
+        [30.0, 31.0]
+    );
+
+    let c = &a * &b;
+
+    println!("{a}"); // cargo test -- --nocapture
+    println!("{b}");
+    println!("{c}");
+
+    assert_eq!(c, matrix!(
+            2 x 2
+            [140.0, 146.0]
+            [320.0, 335.0]
+    ));
+
+    let d = c * 2.0;
+    assert_eq!(d, matrix!(
+            2 x 2
+            [280.0, 292.0]
+            [640.0, 670.0]
+    ));
+}
+
+#[cfg(test)]
+#[test]
+fn matrix_add() {
+    let a = matrix!(
+        3 x 2
+        [1.0, -1.0, 2.0]
+        [0.0, 3.0, 4.0]
+    );
+    let b = matrix!(
+        3 x 2
+        [2.0, -1.0, 5.0]
+        [7.0, 1.0, 4.0]
+    );
+
+    println!("{a}"); // cargo test -- --nocapture
+
+    let c = a + &b;
+
+    println!("{b}");
+    println!("{c}");
+
+    assert_eq!(c, matrix!(
+            3 x 2
+            [3.0, -2.0, 7.0]
+            [7.0, 4.0, 8.0]
+    ));
+}
+
+#[cfg(test)]
+#[test]
+fn matrix_transpose() {
+    let m = matrix!(
+        3 x 2
+        [1.0, 2.0, 3.0]
+        [4.0, 5.0, 6.0]
+    );
+
+    assert_eq!(m.transpose(), matrix!(
+            2 x 3
+            [1.0, 4.0]
+            [2.0, 5.0]
+            [3.0, 6.0]
+    ));
+}
+
+#[cfg(test)]
+#[test]
+fn vector3_cross() {
+    let a = vector!(3 [5.0, 6.0, 2.0]);
+    let b = vector!(3 [1.0, 1.0, 1.0]);
+
+    assert_eq!(a.cross(&b), vector!(3 [4.0, -3.0, -1.0]));
+}
+
+#[cfg(test)]
+#[test]
+fn add_assi() {
+    let mut a = vector!(3 [5.0, 6.0, 2.0]);
+    let b = vector!(3 [1.0, 1.0, 1.0]);
+
+    a += &b;
+    assert_eq!(a, vector!(3 [6.0, 7.0, 3.0]));
+
+    a += 1.0;
+    assert_eq!(a, vector!(3 [7.0, 8.0, 4.0]));
+}
