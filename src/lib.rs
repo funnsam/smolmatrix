@@ -102,6 +102,9 @@ dim!(Dim6 Tensor6 6 X, Y, Z, W, V, U);
 dim!(conv Dim1 <=> Dim0);
 dim!(conv Dim2 <=> Dim1 W);
 dim!(conv Dim3 <=> Dim2 W, H);
+dim!(conv Dim4 <=> Dim3 W, H, D);
+dim!(conv Dim5 <=> Dim4 X, Y, Z, W);
+dim!(conv Dim6 <=> Dim5 X, Y, Z, W, V);
 
 #[macro_export]
 macro_rules! vector {
@@ -110,7 +113,7 @@ macro_rules! vector {
 
 #[macro_export]
 macro_rules! hvector {
-    [$($e:expr),* $(,)?] => { $crate::HVector { inner: [$($e),*] } };
+    ($size:tt $e:expr) => { $crate::HVector::<$size> { inner: $e } };
 }
 
 #[macro_export]
@@ -203,4 +206,27 @@ impl<const W: usize, const H: usize> fmt::Display for Matrix<W, H> where
 
         writeln!(f, "└{:<inner_space$}┘", "")
     }
+}
+
+#[cfg(test)]
+#[test]
+fn down_conv() {
+    let a: Scalar = hvector!(1 [1.2]).into();
+    assert_eq!(a, Scalar { inner: [1.2] });
+
+    let a: HVector<2> = matrix!(2 x 1 [1.2, 2.3]).into();
+    assert_eq!(a, HVector { inner: [1.2, 2.3] });
+}
+
+#[cfg(test)]
+#[test]
+fn up_conv() {
+    let a: HVector<1> = Scalar::new_filled(1.2).into();
+    assert_eq!(a, HVector { inner: [1.2] });
+
+    let a: Matrix<2, 1> = hvector!(2 [1.2, 2.3]).into();
+    assert_eq!(a, Matrix { inner: [1.2, 2.3] });
+
+    let a: Tensor3<2, 2, 1> = matrix!(2 x 2 [1.0, 2.0] [3.0, 4.0]).into();
+    assert_eq!(a, Tensor3 { inner: [1.0, 2.0, 3.0, 4.0] });
 }

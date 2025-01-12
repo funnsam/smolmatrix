@@ -235,11 +235,11 @@ impl Vector<3> {
 
 impl HVector<3> {
     pub fn cross(&self, b: &Self) -> Self {
-        hvector! [
+        hvector!(3 [
             self[1] * b[2] - self[2] * b[1],
             self[2] * b[0] - self[0] * b[2],
             self[0] * b[1] - self[1] * b[0],
-        ]
+        ])
     }
 }
 
