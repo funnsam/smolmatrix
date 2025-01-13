@@ -89,9 +89,9 @@ macro_rules! dim {
             }
         }
     };
-    ($n:tt $t:tt $d:tt $($i:tt),*) => {
-        /// Marker object representing a $d-dimensional size. This struct contains a private empty
-        /// tuple so that it isn't constructable.
+    ($n:tt $t:tt $d:tt $ord:tt $($i:tt),*) => {
+        #[doc = concat!("Marker object representing a ", $d, "-dimensional size. This struct contains a private empty")]
+        #[doc = "tuple so that it isn't constructable."]
         #[derive(Debug, Clone, PartialEq)]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         pub struct $n<$(const $i: usize),*>(pub(self) ());
@@ -102,20 +102,21 @@ macro_rules! dim {
             const NUM_ELEMENTS: usize = 1 $(* $i)*;
         }
 
-        /// A $d-th order tensor.
+        #[doc = concat!("A ", $d, "-", $ord, " order tensor.")]
         pub type $t<$(const $i: usize),*> = Tensor<$n<$($i),*>>;
     };
 }
 
+/// Type alias of a vertical vector.
 pub type Vector<const H: usize> = Matrix<1, H>;
 
-dim!(Dim0 Scalar 0);
-dim!(Dim1 HVector 1 W);
-dim!(Dim2 Matrix 2 W, H);
-dim!(Dim3 Tensor3 3 W, H, D);
-dim!(Dim4 Tensor4 4 X, Y, Z, W);
-dim!(Dim5 Tensor5 5 X, Y, Z, W, V);
-dim!(Dim6 Tensor6 6 X, Y, Z, W, V, U);
+dim!(Dim0 Scalar  0 "th");
+dim!(Dim1 HVector 1 "st" W);
+dim!(Dim2 Matrix  2 "nd" W, H);
+dim!(Dim3 Tensor3 3 "rd" W, H, D);
+dim!(Dim4 Tensor4 4 "th" X, Y, Z, W);
+dim!(Dim5 Tensor5 5 "th" X, Y, Z, W, V);
+dim!(Dim6 Tensor6 6 "th" X, Y, Z, W, V, U);
 
 dim!(conv Dim1 <=> Dim0);
 dim!(conv Dim2 <=> Dim1 W);
