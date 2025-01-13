@@ -159,7 +159,7 @@ impl<const W: usize, const H: usize> Matrix<W, H> where
     }
 }
 
-impl<const W: usize> HVector<W> where bound!(inner Dim1<W>): Sized {
+impl<const W: usize> HVector<W> where bound!(Dim1<W>): Sized {
     #[cfg(feature = "std")]
     pub fn length(&self) -> f32 {
         self.length_squared().sqrt()
@@ -192,7 +192,7 @@ impl<const W: usize> HVector<W> where bound!(inner Dim1<W>): Sized {
     }
 }
 
-impl<const H: usize> Vector<H> where bound!(inner Dim2<1, H>): Sized {
+impl<const H: usize> Vector<H> where bound!(Dim2<1, H>): Sized {
     #[cfg(feature = "std")]
     pub fn length(&self) -> f32 {
         self.length_squared().sqrt()

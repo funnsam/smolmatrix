@@ -1,6 +1,6 @@
 #![cfg_attr(not(any(test, feature = "std")), no_std)]
 #![allow(incomplete_features)]
-#![feature(generic_const_exprs, inherent_associated_types)]
+#![feature(generic_const_exprs)]
 
 use core::fmt;
 
@@ -8,15 +8,32 @@ mod index;
 mod ops;
 
 #[macro_export]
+/// Used for generic `where` [`Dimension`] bounds.
+///
+/// # Usage
+/// An optional `inner` parameter is passed when you don't need access to indexing.
+///
+/// # Example
+/// ```
+/// #![allow(incomplete_features)]
+/// #![feature(generic_const_exprs)]
+///
+/// use smolmatrix::*;
+///
+/// struct MyTensoredStruct<D: Dimension> (Tensor<D>) where bound!(inner D): Sized;
+///
+/// impl<D: Dimension> MyTensoredStruct<D> where bound!(D): Sized {
+///     pub fn get(&self, index: [usize; D::ORDER]) -> f32 {
+///         self.0[index]
+///     }
+/// }
+/// ```
 macro_rules! bound {
     (inner $dim:ty) => {
         [f32; <$dim as $crate::Dimension>::NUM_ELEMENTS]
     };
-    (index $dim:ty) => {
-        [usize; <$dim as $crate::Dimension>::ORDER]
-    };
     ($dim:ty) => {
-        ($crate::bound!(inner $dim), $crate::bound!(index $dim))
+        ($crate::bound!(inner $dim), [usize; <$dim as $crate::Dimension>::ORDER])
     };
 }
 
@@ -33,8 +50,6 @@ pub trait Dimension {
 }
 
 impl<D: Dimension> Tensor<D> where bound!(inner D): Sized {
-    pub type Dimension = D;
-
     pub fn new_filled(value: f32) -> Self {
         Self { inner: [value; D::NUM_ELEMENTS] }
     }
@@ -198,7 +213,7 @@ impl<D: Dimension> FromIterator<f32> for Tensor<D> where bound!(inner D): Sized 
     }
 }
 
-impl<const W: usize, const H: usize> fmt::Display for Matrix<W, H> where bound!(inner Dim2<W, H>): Sized {
+impl<const W: usize, const H: usize> fmt::Display for Matrix<W, H> where bound!(Dim2<W, H>): Sized {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         struct LenOf {
             len: usize,
