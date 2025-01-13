@@ -1,15 +1,28 @@
 #![cfg_attr(not(any(test, feature = "std")), no_std)]
 #![allow(incomplete_features)]
-#![feature(generic_const_exprs)]
+#![feature(generic_const_exprs, inherent_associated_types)]
 
 use core::fmt;
 
 mod index;
 mod ops;
 
+#[macro_export]
+macro_rules! bound {
+    (inner $dim:ty) => {
+        [f32; <$dim as $crate::Dimension>::NUM_ELEMENTS]
+    };
+    (index $dim:ty) => {
+        [usize; <$dim as $crate::Dimension>::ORDER]
+    };
+    ($dim:ty) => {
+        ($crate::bound!(inner $dim), $crate::bound!(index $dim))
+    };
+}
+
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Tensor<D: Dimension> where [f32; D::NUM_ELEMENTS]: Sized {
+pub struct Tensor<D: Dimension> where bound!(inner D): Sized {
     pub inner: [f32; D::NUM_ELEMENTS],
 }
 
@@ -19,7 +32,9 @@ pub trait Dimension {
     const NUM_ELEMENTS: usize;
 }
 
-impl<D: Dimension> Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
+impl<D: Dimension> Tensor<D> where bound!(inner D): Sized {
+    pub type Dimension = D;
+
     pub fn new_filled(value: f32) -> Self {
         Self { inner: [value; D::NUM_ELEMENTS] }
     }
@@ -48,8 +63,8 @@ impl<D: Dimension> Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
 macro_rules! dim {
     (conv $fn:tt <=> $tn:tt $($ti:tt),*) => {
         impl<$(const $ti: usize),*> From<Tensor<$fn<$($ti,)* 1>>> for Tensor<$tn<$($ti),*>> where
-            [f32; $fn::<$($ti,)* 1>::NUM_ELEMENTS]: Sized,
-            [f32; $tn::<$($ti),*>::NUM_ELEMENTS]: Sized,
+            bound!(inner $fn::<$($ti,)* 1>): Sized,
+            bound!(inner $tn::<$($ti),*>): Sized,
         {
             fn from(value: Tensor<$fn<$($ti,)* 1>>) -> Self {
                 value.down_conv()
@@ -57,8 +72,8 @@ macro_rules! dim {
         }
 
         impl<$(const $ti: usize),*> From<Tensor<$tn<$($ti),*>>> for Tensor<$fn<$($ti,)* 1>> where
-            [f32; $fn::<$($ti,)* 1>::NUM_ELEMENTS]: Sized,
-            [f32; $tn::<$($ti),*>::NUM_ELEMENTS]: Sized,
+            bound!(inner $fn::<$($ti,)* 1>): Sized,
+            bound!(inner $tn::<$($ti),*>): Sized,
         {
             fn from(value: Tensor<$tn<$($ti),*>>) -> Self {
                 value.up_conv()
@@ -66,8 +81,8 @@ macro_rules! dim {
         }
 
         impl<$(const $ti: usize),*> Tensor<$tn<$($ti),*>> where
-            [f32; $fn::<$($ti,)* 1>::NUM_ELEMENTS]: Sized,
-            [f32; $tn::<$($ti),*>::NUM_ELEMENTS]: Sized,
+            bound!(inner $fn::<$($ti,)* 1>): Sized,
+            bound!(inner $tn::<$($ti),*>): Sized,
         {
             pub fn up_conv(self) -> Tensor<$fn<$($ti,)* 1>> {
                 // SAFETY: A tensor of size […] and […, 1] is the same
@@ -78,8 +93,8 @@ macro_rules! dim {
         }
 
         impl<$(const $ti: usize),*> Tensor<$fn<$($ti,)* 1>> where
-            [f32; $fn::<$($ti,)* 1>::NUM_ELEMENTS]: Sized,
-            [f32; $tn::<$($ti),*>::NUM_ELEMENTS]: Sized,
+            bound!(inner $fn::<$($ti,)* 1>): Sized,
+            bound!(inner $tn::<$($ti),*>): Sized,
         {
             pub fn down_conv(self) -> Tensor<$tn<$($ti),*>> {
                 // SAFETY: A tensor of size […, 1] and […] is the same
@@ -176,17 +191,14 @@ macro_rules! vector_swap {
     }};
 }
 
-impl<D: Dimension> FromIterator<f32> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
+impl<D: Dimension> FromIterator<f32> for Tensor<D> where bound!(inner D): Sized {
     fn from_iter<T: IntoIterator<Item = f32>>(iter: T) -> Self {
         let mut iter = iter.into_iter();
         Self { inner: core::array::from_fn(|_| iter.next().unwrap()) }
     }
 }
 
-impl<const W: usize, const H: usize> fmt::Display for Matrix<W, H> where
-    [f32; <Dim2<W, H> as Dimension>::NUM_ELEMENTS]: Sized,
-    [usize; <Dim2<W, H> as Dimension>::ORDER]: Sized,
-{
+impl<const W: usize, const H: usize> fmt::Display for Matrix<W, H> where bound!(inner Dim2<W, H>): Sized {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         struct LenOf {
             len: usize,

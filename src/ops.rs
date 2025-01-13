@@ -1,7 +1,7 @@
 use core::ops::*;
 use crate::*;
 
-impl<D: Dimension> Add<&Self> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
+impl<D: Dimension> Add<&Self> for Tensor<D> where bound!(inner D): Sized {
     type Output = Self;
 
     fn add(self, rhs: &Self) -> Self {
@@ -9,7 +9,7 @@ impl<D: Dimension> Add<&Self> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized 
     }
 }
 
-impl<D: Dimension> Add<f32> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
+impl<D: Dimension> Add<f32> for Tensor<D> where bound!(inner D): Sized {
     type Output = Self;
 
     fn add(self, rhs: f32) -> Self {
@@ -17,7 +17,7 @@ impl<D: Dimension> Add<f32> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
     }
 }
 
-impl<D: Dimension> Sub<&Self> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
+impl<D: Dimension> Sub<&Self> for Tensor<D> where bound!(inner D): Sized {
     type Output = Self;
 
     fn sub(self, rhs: &Self) -> Self {
@@ -25,7 +25,7 @@ impl<D: Dimension> Sub<&Self> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized 
     }
 }
 
-impl<D: Dimension> Sub<f32> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
+impl<D: Dimension> Sub<f32> for Tensor<D> where bound!(inner D): Sized {
     type Output = Self;
 
     fn sub(self, rhs: f32) -> Self {
@@ -33,7 +33,7 @@ impl<D: Dimension> Sub<f32> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
     }
 }
 
-impl<D: Dimension> Mul<f32> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
+impl<D: Dimension> Mul<f32> for Tensor<D> where bound!(inner D): Sized {
     type Output = Self;
 
     fn mul(self, rhs: f32) -> Self {
@@ -41,7 +41,7 @@ impl<D: Dimension> Mul<f32> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
     }
 }
 
-impl<D: Dimension> Div<f32> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
+impl<D: Dimension> Div<f32> for Tensor<D> where bound!(inner D): Sized {
     type Output = Self;
 
     fn div(self, rhs: f32) -> Self {
@@ -49,7 +49,7 @@ impl<D: Dimension> Div<f32> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
     }
 }
 
-impl<D: Dimension> Div<&Self> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
+impl<D: Dimension> Div<&Self> for Tensor<D> where bound!(inner D): Sized {
     type Output = Self;
 
     fn div(self, rhs: &Self) -> Self {
@@ -57,7 +57,7 @@ impl<D: Dimension> Div<&Self> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized 
     }
 }
 
-impl<D: Dimension> Neg for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
+impl<D: Dimension> Neg for Tensor<D> where bound!(inner D): Sized {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
@@ -65,43 +65,43 @@ impl<D: Dimension> Neg for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
     }
 }
 
-impl<D: Dimension> AddAssign<&Self> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
+impl<D: Dimension> AddAssign<&Self> for Tensor<D> where bound!(inner D): Sized {
     fn add_assign(&mut self, rhs: &Self) {
         self.map_zip_ref_in_place(rhs, |i, j| i + j)
     }
 }
 
-impl<D: Dimension> AddAssign<f32> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
+impl<D: Dimension> AddAssign<f32> for Tensor<D> where bound!(inner D): Sized {
     fn add_assign(&mut self, rhs: f32) {
         self.map_each_in_place(|i| i + rhs)
     }
 }
 
-impl<D: Dimension> SubAssign<&Self> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
+impl<D: Dimension> SubAssign<&Self> for Tensor<D> where bound!(inner D): Sized {
     fn sub_assign(&mut self, rhs: &Self) {
         self.map_zip_ref_in_place(rhs, |i, j| i - j)
     }
 }
 
-impl<D: Dimension> SubAssign<f32> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
+impl<D: Dimension> SubAssign<f32> for Tensor<D> where bound!(inner D): Sized {
     fn sub_assign(&mut self, rhs: f32) {
         self.map_each_in_place(|i| i - rhs)
     }
 }
 
-impl<D: Dimension> MulAssign<f32> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
+impl<D: Dimension> MulAssign<f32> for Tensor<D> where bound!(inner D): Sized {
     fn mul_assign(&mut self, rhs: f32) {
         self.map_each_in_place(|i| i * rhs)
     }
 }
 
-impl<D: Dimension> DivAssign<f32> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
+impl<D: Dimension> DivAssign<f32> for Tensor<D> where bound!(inner D): Sized {
     fn div_assign(&mut self, rhs: f32) {
         self.map_each_in_place(|i| i / rhs)
     }
 }
 
-impl<D: Dimension> DivAssign<&Self> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
+impl<D: Dimension> DivAssign<&Self> for Tensor<D> where bound!(inner D): Sized {
     fn div_assign(&mut self, rhs: &Self) {
         self.map_zip_ref_in_place(rhs, |i, j| i / j)
     }
@@ -110,10 +110,9 @@ impl<D: Dimension> DivAssign<&Self> for Tensor<D> where [f32; D::NUM_ELEMENTS]: 
 impl<const WAHB: usize, const HA: usize, const WB: usize> Mul<&Matrix<WB, WAHB>>
     for &Matrix<WAHB, HA>
     where
-        [f32; <Dim2<WAHB, HA> as Dimension>::NUM_ELEMENTS]: Sized,
-        [f32; <Dim2<WB, WAHB> as Dimension>::NUM_ELEMENTS]: Sized,
-        [f32; <Dim2<WB, HA> as Dimension>::NUM_ELEMENTS]: Sized,
-        [usize; <Dim2<WB, HA> as Dimension>::ORDER]: Sized,
+        bound!(inner Dim2<WAHB, HA>): Sized,
+        bound!(inner Dim2<WB, WAHB>): Sized,
+        bound!(Dim2<WB, HA>): Sized,
 {
     type Output = Matrix<WB, HA>;
 
@@ -136,28 +135,31 @@ impl<const WAHB: usize, const HA: usize, const WB: usize> Mul<&Matrix<WB, WAHB>>
     }
 }
 
-impl<D: Dimension> Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
+impl<D: Dimension> Tensor<D> where bound!(inner D): Sized {
     /// Computes the Hadamard product (aka. element-wise multiplication)
     pub fn hadamard_product(self, rhs: &Self) -> Self {
         self.map_zip_ref(rhs, |i, j| i * j)
     }
 }
 
-impl<const W: usize, const H: usize> Matrix<W, H> where [f32; <Dim2<W, H> as Dimension>::NUM_ELEMENTS]: Sized {
-    pub fn transpose(self) -> Matrix<H, W> where [f32; <Dim2<H, W> as Dimension>::NUM_ELEMENTS]: Sized {
-        let mut inner = [0.0; <Dim2<H, W> as Dimension>::NUM_ELEMENTS];
+impl<const W: usize, const H: usize> Matrix<W, H> where
+    bound!(inner Dim2<W, H>): Sized,
+    bound!(Dim2<H, W>): Sized,
+{
+    pub fn transpose(self) -> Matrix<H, W> {
+        let mut t = Matrix::new_filled(0.0);
 
         for y in 0..H {
             for x in 0..W {
-                inner[y + x * H] = self.inner[x + y * W];
+                t[[y, x]] = self[[x, y]];
             }
         }
 
-        Matrix { inner }
+        t
     }
 }
 
-impl<const W: usize> HVector<W> where [f32; <Dim1<W> as Dimension>::NUM_ELEMENTS]: Sized {
+impl<const W: usize> HVector<W> where bound!(inner Dim1<W>): Sized {
     #[cfg(feature = "std")]
     pub fn length(&self) -> f32 {
         self.length_squared().sqrt()
@@ -190,7 +192,7 @@ impl<const W: usize> HVector<W> where [f32; <Dim1<W> as Dimension>::NUM_ELEMENTS
     }
 }
 
-impl<const H: usize> Vector<H> where [f32; <Dim2<1, H> as Dimension>::NUM_ELEMENTS]: Sized {
+impl<const H: usize> Vector<H> where bound!(inner Dim2<1, H>): Sized {
     #[cfg(feature = "std")]
     pub fn length(&self) -> f32 {
         self.length_squared().sqrt()

@@ -1,7 +1,7 @@
 use core::ops::{Index, IndexMut};
 use crate::*;
 
-impl<D: Dimension> Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
+impl<D: Dimension> Tensor<D> where bound!(D): Sized {
     #[inline]
     pub fn index_of(index: [usize; D::ORDER]) -> usize {
         let mut i = 0;
@@ -18,7 +18,7 @@ impl<D: Dimension> Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
     }
 }
 
-impl<D: Dimension> Index<[usize; D::ORDER]> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
+impl<D: Dimension> Index<[usize; D::ORDER]> for Tensor<D> where bound!(D): Sized {
     type Output = f32;
 
     #[inline]
@@ -27,14 +27,14 @@ impl<D: Dimension> Index<[usize; D::ORDER]> for Tensor<D> where [f32; D::NUM_ELE
     }
 }
 
-impl<D: Dimension> IndexMut<[usize; D::ORDER]> for Tensor<D> where [f32; D::NUM_ELEMENTS]: Sized {
+impl<D: Dimension> IndexMut<[usize; D::ORDER]> for Tensor<D> where bound!(D): Sized {
     #[inline]
     fn index_mut(&mut self, index: [usize; D::ORDER]) -> &mut Self::Output {
         &mut self.inner[Self::index_of(index)]
     }
 }
 
-impl<const W: usize> Index<usize> for HVector<W> where [f32; <Dim1<W> as Dimension>::NUM_ELEMENTS]: Sized {
+impl<const W: usize> Index<usize> for HVector<W> where bound!(Dim1<W>): Sized {
     type Output = f32;
 
     #[inline]
@@ -43,14 +43,14 @@ impl<const W: usize> Index<usize> for HVector<W> where [f32; <Dim1<W> as Dimensi
     }
 }
 
-impl<const W: usize> IndexMut<usize> for HVector<W> where [f32; <Dim1<W> as Dimension>::NUM_ELEMENTS]: Sized {
+impl<const W: usize> IndexMut<usize> for HVector<W> where bound!(Dim1<W>): Sized {
     #[inline]
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.inner[index]
     }
 }
 
-impl<const H: usize> Index<usize> for Vector<H> where [f32; <Dim2<1, H> as Dimension>::NUM_ELEMENTS]: Sized {
+impl<const H: usize> Index<usize> for Vector<H> where bound!(Dim2<1, H>): Sized {
     type Output = f32;
 
     #[inline]
@@ -59,14 +59,14 @@ impl<const H: usize> Index<usize> for Vector<H> where [f32; <Dim2<1, H> as Dimen
     }
 }
 
-impl<const H: usize> IndexMut<usize> for Vector<H> where [f32; <Dim2<1, H> as Dimension>::NUM_ELEMENTS]: Sized {
+impl<const H: usize> IndexMut<usize> for Vector<H> where bound!(Dim2<1, H>): Sized {
     #[inline]
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.inner[index]
     }
 }
 
-impl<const W: usize> HVector<W> where [f32; <Dim1<W> as Dimension>::NUM_ELEMENTS]: Sized {
+impl<const W: usize> HVector<W> where bound!(Dim1<W>): Sized {
     pub fn x(&self) -> f32 { self[0] }
     pub fn y(&self) -> f32 { self[1] }
     pub fn z(&self) -> f32 { self[2] }
@@ -83,7 +83,7 @@ impl<const W: usize> HVector<W> where [f32; <Dim1<W> as Dimension>::NUM_ELEMENTS
     pub fn w_mut(&mut self) -> &mut f32 { &mut self[3] }
 }
 
-impl<const H: usize> Vector<H> where [f32; <Dim2<1, H> as Dimension>::NUM_ELEMENTS]: Sized {
+impl<const H: usize> Vector<H> where bound!(Dim2<1, H>): Sized {
     pub fn x(&self) -> f32 { self[0] }
     pub fn y(&self) -> f32 { self[1] }
     pub fn z(&self) -> f32 { self[2] }
