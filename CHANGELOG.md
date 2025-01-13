@@ -1,6 +1,8 @@
 <!-- updated by cargo-release -->
 
 # Unreleased
+
+# 0.2.0
 - There are now `Tensor` instead of `Matrix`
 - Added the Hadamard operation to tensors
 - `serde` feature now uses derive
