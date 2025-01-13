@@ -2,6 +2,8 @@
 
 # Unreleased
 
+# 0.2.2
+
 # 0.2.1
 - Added `bounds!` macro for `where` clauses on generic dimensions
 - Fixed documentation
