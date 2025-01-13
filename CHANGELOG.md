@@ -1,6 +1,12 @@
 <!-- updated by cargo-release -->
 
 # Unreleased
+- There are now `Tensor` instead of `Matrix`
+- Added the Hadamard operation to tensors
+- `serde` feature now uses derive
+- Flattened `.inner` arrays
+- Added `Dimension` trait
+- Unfortunately generic things for tensors require `where [f32; D::NUM_ELEMENTS]: Sized`
 
 # 0.1.9
 - Added `serde` feature

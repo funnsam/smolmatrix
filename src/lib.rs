@@ -52,10 +52,7 @@ macro_rules! dim {
             [f32; $tn::<$($ti),*>::NUM_ELEMENTS]: Sized,
         {
             fn from(value: Tensor<$fn<$($ti,)* 1>>) -> Self {
-                // SAFETY: A tensor of size […, 1] and […] is the same
-                unsafe {
-                    Self { inner: *core::mem::transmute::<&[f32; <$fn<$($ti,)* 1> as Dimension>::NUM_ELEMENTS], &[f32; <$tn<$($ti),*> as Dimension>::NUM_ELEMENTS]>(&value.inner) }
-                }
+                value.down_conv()
             }
         }
 
@@ -64,9 +61,30 @@ macro_rules! dim {
             [f32; $tn::<$($ti),*>::NUM_ELEMENTS]: Sized,
         {
             fn from(value: Tensor<$tn<$($ti),*>>) -> Self {
+                value.up_conv()
+            }
+        }
+
+        impl<$(const $ti: usize),*> Tensor<$tn<$($ti),*>> where
+            [f32; $fn::<$($ti,)* 1>::NUM_ELEMENTS]: Sized,
+            [f32; $tn::<$($ti),*>::NUM_ELEMENTS]: Sized,
+        {
+            pub fn up_conv(self) -> Tensor<$fn<$($ti,)* 1>> {
                 // SAFETY: A tensor of size […] and […, 1] is the same
                 unsafe {
-                    Self { inner: *core::mem::transmute::<&[f32; <$tn<$($ti),*> as Dimension>::NUM_ELEMENTS], &[f32; <$fn<$($ti,)* 1> as Dimension>::NUM_ELEMENTS]>(&value.inner) }
+                    Tensor { inner: *core::mem::transmute::<&[f32; <$tn<$($ti),*> as Dimension>::NUM_ELEMENTS], &[f32; <$fn<$($ti,)* 1> as Dimension>::NUM_ELEMENTS]>(&self.inner) }
+                }
+            }
+        }
+
+        impl<$(const $ti: usize),*> Tensor<$fn<$($ti,)* 1>> where
+            [f32; $fn::<$($ti,)* 1>::NUM_ELEMENTS]: Sized,
+            [f32; $tn::<$($ti),*>::NUM_ELEMENTS]: Sized,
+        {
+            pub fn down_conv(self) -> Tensor<$tn<$($ti),*>> {
+                // SAFETY: A tensor of size […, 1] and […] is the same
+                unsafe {
+                    Tensor { inner: *core::mem::transmute::<&[f32; <$fn<$($ti,)* 1> as Dimension>::NUM_ELEMENTS], &[f32; <$tn<$($ti),*> as Dimension>::NUM_ELEMENTS]>(&self.inner) }
                 }
             }
         }
@@ -211,22 +229,22 @@ impl<const W: usize, const H: usize> fmt::Display for Matrix<W, H> where
 #[cfg(test)]
 #[test]
 fn down_conv() {
-    let a: Scalar = hvector!(1 [1.2]).into();
+    let a = hvector!(1 [1.2]).down_conv();
     assert_eq!(a, Scalar { inner: [1.2] });
 
-    let a: HVector<2> = matrix!(2 x 1 [1.2, 2.3]).into();
+    let a = matrix!(2 x 1 [1.2, 2.3]).down_conv();
     assert_eq!(a, HVector { inner: [1.2, 2.3] });
 }
 
 #[cfg(test)]
 #[test]
 fn up_conv() {
-    let a: HVector<1> = Scalar::new_filled(1.2).into();
+    let a = Scalar::new_filled(1.2).up_conv();
     assert_eq!(a, HVector { inner: [1.2] });
 
-    let a: Matrix<2, 1> = hvector!(2 [1.2, 2.3]).into();
+    let a = hvector!(2 [1.2, 2.3]).up_conv();
     assert_eq!(a, Matrix { inner: [1.2, 2.3] });
 
-    let a: Tensor3<2, 2, 1> = matrix!(2 x 2 [1.0, 2.0] [3.0, 4.0]).into();
+    let a = matrix!(2 x 2 [1.0, 2.0] [3.0, 4.0]).up_conv();
     assert_eq!(a, Tensor3 { inner: [1.0, 2.0, 3.0, 4.0] });
 }
