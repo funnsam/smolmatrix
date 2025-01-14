@@ -6,16 +6,11 @@ pub trait VectorDim: Dimension {
     const SIZE: usize;
 }
 
-#[allow(private_bounds)]
-pub trait VectorDim2: Seal + VectorDim {}
-#[allow(private_bounds)]
-pub trait VectorDim3: Seal + VectorDim {}
-#[allow(private_bounds)]
-pub trait VectorDim4: Seal + VectorDim {}
-#[allow(private_bounds)]
-pub trait VectorDim5: Seal + VectorDim {}
-#[allow(private_bounds)]
-pub trait VectorDim6: Seal + VectorDim {}
+pub trait VectorDim2: VectorDim {}
+pub trait VectorDim3: VectorDim {}
+pub trait VectorDim4: VectorDim {}
+pub trait VectorDim5: VectorDim {}
+pub trait VectorDim6: VectorDim {}
 
 macro_rules! dim {
     ($name:tt $($one:tt)*) => {
@@ -109,7 +104,7 @@ impl<D: VectorDim3> Tensor<D> where bound!(D): Sized {
     }
 }
 
-impl<const S: usize> Vector<S> where bound!(Dim2<1, S>): Sized {
+impl<const S: usize> Vector<S> where bound!(inner Dim2<1, S>): Sized {
     #[inline]
     pub fn into_horizontal(self) -> HVector<S> where bound!(Dim1<S>): Sized {
         // SAFETY: a tensor and it's transposed variant are the same size
@@ -119,7 +114,7 @@ impl<const S: usize> Vector<S> where bound!(Dim2<1, S>): Sized {
     }
 }
 
-impl<const S: usize> HVector<S> where bound!(Dim1<S>): Sized {
+impl<const S: usize> HVector<S> where bound!(inner Dim1<S>): Sized {
     #[inline]
     pub fn into_vertical(self) -> Vector<S> where bound!(Dim2<1, S>): Sized {
         // SAFETY: a tensor and it's transposed variant are the same size

@@ -97,6 +97,7 @@ impl<D: Dimension> AsMut<Self> for Tensor<D> where bound!(inner D): Sized {
 }
 
 impl<D: Dimension> Tensor<D> where bound!(inner D): Sized {
+    /// Create a new [`Tensor`] with values filled from `value`.
     pub fn new_filled(value: f32) -> Self {
         Self { inner: [value; D::NUM_ELEMENTS] }
     }
@@ -122,9 +123,20 @@ impl<D: Dimension> Tensor<D> where bound!(inner D): Sized {
     }
 }
 
-pub trait Dimension {
+/// Representing a size and order of a [`Tensor`].
+///
+/// This trait is sealed so that no possible underlying unsafe code are unsafe.
+#[allow(private_bounds)]
+pub trait Dimension: Seal {
+    /// The order (or rank) of this dimension
     const ORDER: usize;
+
+    /// The dimensions of this dimension
     const DIMENSIONS: &[usize];
+
+    /// The total number of elements.
+    ///
+    /// This value should be equal to the product of every element of [`Self::DIMENSIONS`]
     const NUM_ELEMENTS: usize;
 }
 
@@ -152,11 +164,24 @@ macro_rules! dim {
             bound!(inner $fn::<$($ti,)* 1>): Sized,
             bound!(inner $tn::<$($ti),*>): Sized,
         {
+            /// Convert a tensor up an order.
             pub fn up_conv(self) -> Tensor<$fn<$($ti,)* 1>> {
                 // SAFETY: A tensor of size […] and […, 1] is the same
                 unsafe {
                     Tensor { inner: *core::mem::transmute::<&[f32; <$tn<$($ti),*> as Dimension>::NUM_ELEMENTS], &[f32; <$fn<$($ti,)* 1> as Dimension>::NUM_ELEMENTS]>(&self) }
                 }
+            }
+
+            /// Join multiple tensors into a tensor with an order higher by copying each element.
+            pub fn join<const N: usize>(list: [&Self; N]) -> Tensor<$fn<$($ti,)* N>> where
+                bound!(inner $fn<$($ti,)* N>): Sized
+            {
+                let mut joined = Tensor::new_filled(0.0);
+                for (i, e) in list.into_iter().enumerate() {
+                    joined.inner[i $(* $ti)*..(i + 1) $(* $ti)*].copy_from_slice(&**e);
+                }
+
+                joined
             }
         }
 
@@ -164,6 +189,7 @@ macro_rules! dim {
             bound!(inner $fn::<$($ti,)* 1>): Sized,
             bound!(inner $tn::<$($ti),*>): Sized,
         {
+            /// Convert a tensor down an order if its last dimension is 1.
             pub fn down_conv(self) -> Tensor<$tn<$($ti),*>> {
                 // SAFETY: A tensor of size […, 1] and […] is the same
                 unsafe {
@@ -210,25 +236,43 @@ dim!(conv Dim4 <=> Dim3 W, H, D);
 dim!(conv Dim5 <=> Dim4 X, Y, Z, W);
 dim!(conv Dim6 <=> Dim5 X, Y, Z, W, V);
 
+/// Create a new [`Vector`] from a list of elements.
+///
+/// # Example
+/// ```
+/// #![allow(incomplete_features)]
+/// #![feature(generic_const_exprs)]
+///
+/// use smolmatrix::*;
+///
+/// let vector = vector!(3 [1.0, 2.0, 3.0]);
+/// assert_eq!(vector[0], 1.0);
+/// assert_eq!(vector[1], 2.0);
+/// assert_eq!(vector[2], 3.0);
+/// ```
 #[macro_export]
 macro_rules! vector {
     ($size:tt $e:expr) => { $crate::Vector::<$size> { inner: $e } };
 }
 
+
+/// Create a new [`HVector`] from a list of elements.
+///
+/// # Example
+/// ```
+/// #![allow(incomplete_features)]
+/// #![feature(generic_const_exprs)]
+///
+/// use smolmatrix::*;
+///
+/// let hvector = hvector!(3 [1.0, 2.0, 3.0]);
+/// assert_eq!(hvector[0], 1.0);
+/// assert_eq!(hvector[1], 2.0);
+/// assert_eq!(hvector[2], 3.0);
+/// ```
 #[macro_export]
 macro_rules! hvector {
     ($size:tt $e:expr) => { $crate::HVector::<$size> { inner: $e } };
-}
-
-#[macro_export]
-macro_rules! matrix {
-    ($w:tt x $h:tt $([$($v:expr),* $(,)?])*) => {{
-        let mut m = $crate::Matrix::<$w, $h>::new_filled(0.0);
-
-        $crate::matrix_fill!(m, 0, $([$($v,)*])*);
-
-        m
-    }};
 }
 
 #[doc(hidden)]
@@ -247,6 +291,35 @@ macro_rules! matrix_fill {
     ($m: expr, $y: expr, $x: expr,) => {};
 }
 
+/// Create a new [`Matrix`] from a list of elements.
+///
+/// # Example
+/// ```
+/// #![allow(incomplete_features)]
+/// #![feature(generic_const_exprs)]
+///
+/// use smolmatrix::*;
+///
+/// let matrix = matrix!(2 x 2
+///     [1.0, 2.0]
+///     [3.0, 4.0]
+/// );
+/// assert_eq!(matrix[[0, 0]], 1.0);
+/// assert_eq!(matrix[[1, 0]], 2.0);
+/// assert_eq!(matrix[[0, 1]], 3.0);
+/// assert_eq!(matrix[[1, 1]], 4.0);
+/// ```
+#[macro_export]
+macro_rules! matrix {
+    ($w:tt x $h:tt $([$($v:expr),* $(,)?])*) => {{
+        let mut m = $crate::Matrix::<$w, $h>::new_filled(0.0);
+
+        $crate::matrix_fill!(m, 0, $([$($v,)*])*);
+
+        m
+    }};
+}
+
 #[doc(hidden)]
 #[macro_export]
 macro_rules! _vector_swap {
@@ -257,10 +330,24 @@ macro_rules! _vector_swap {
     ($at:expr, $vector:expr, $orig:expr,) => {};
 }
 
+/// Performs a parallel vector indicies swap by copying.
+///
+/// # Example
+/// ```
+/// #![allow(incomplete_features)]
+/// #![feature(generic_const_exprs)]
+///
+/// use smolmatrix::*;
+///
+/// let original = vector!(3 [1.0, 2.0, 3.0]);
+/// let swapped = vector_swap!(original, 2 0 1);
+///
+/// assert_eq!(swapped, vector!(3 [3.0, 1.0, 2.0]));
+/// ```
 #[macro_export]
 macro_rules! vector_swap {
     ($vector:expr, $($idx:tt)*) => {{
-        let mut og = $vector;
+        let og = &$vector;
         let mut v = $vector.clone();
         $crate::_vector_swap!(0, v, og, $($idx)*);
         v
@@ -336,4 +423,19 @@ fn up_conv() {
 
     let a = matrix!(2 x 2 [1.0, 2.0] [3.0, 4.0]).up_conv();
     assert_eq!(a, Tensor3 { inner: [1.0, 2.0, 3.0, 4.0] });
+}
+
+#[cfg(test)]
+#[test]
+fn join() {
+    let a = HVector::join([
+        &hvector!(3 [1.0, 2.0, 3.0]),
+        &hvector!(3 [4.0, 5.0, 6.0]),
+        &hvector!(3 [7.0, 8.0, 9.0]),
+    ]);
+    assert_eq!(a, matrix!(3 x 3
+        [1.0, 2.0, 3.0]
+        [4.0, 5.0, 6.0]
+        [7.0, 8.0, 9.0]
+    ));
 }
