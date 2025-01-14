@@ -144,7 +144,7 @@ impl<D: Dimension> Tensor<D> where bound!(inner D): Sized {
     /// Computes the inner product of the given tensors.
     #[inline]
     pub fn dot(&self, b: &Self) -> f32 {
-        self.inner.iter().zip(b.inner.iter()).map(|(i, j)| *i * *j).sum()
+        self.iter().zip(b.iter()).map(|(i, j)| *i * *j).sum()
     }
 }
 

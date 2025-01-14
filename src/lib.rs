@@ -2,7 +2,7 @@
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]
 
-use core::fmt;
+use core::{borrow::{Borrow, BorrowMut}, fmt, ops::{Deref, DerefMut}};
 
 mod index;
 mod ops;
@@ -46,10 +46,54 @@ pub struct Tensor<D: Dimension> where bound!(inner D): Sized {
     pub inner: [f32; D::NUM_ELEMENTS],
 }
 
-pub trait Dimension {
-    const ORDER: usize;
-    const DIMENSIONS: &[usize];
-    const NUM_ELEMENTS: usize;
+impl<D: Dimension> AsRef<[f32; D::NUM_ELEMENTS]> for Tensor<D> where bound!(inner D): Sized {
+    fn as_ref(&self) -> &[f32; D::NUM_ELEMENTS] {
+        &self.inner
+    }
+}
+
+impl<D: Dimension> AsMut<[f32; D::NUM_ELEMENTS]> for Tensor<D> where bound!(inner D): Sized {
+    fn as_mut(&mut self) -> &mut [f32; D::NUM_ELEMENTS] {
+        &mut self.inner
+    }
+}
+
+impl<D: Dimension> Borrow<[f32; D::NUM_ELEMENTS]> for Tensor<D> where bound!(inner D): Sized {
+    fn borrow(&self) -> &[f32; D::NUM_ELEMENTS] {
+        &self.inner
+    }
+}
+
+impl<D: Dimension> BorrowMut<[f32; D::NUM_ELEMENTS]> for Tensor<D> where bound!(inner D): Sized {
+    fn borrow_mut(&mut self) -> &mut [f32; D::NUM_ELEMENTS] {
+        &mut self.inner
+    }
+}
+
+impl<D: Dimension> Deref for Tensor<D> where bound!(inner D): Sized {
+    type Target = [f32; D::NUM_ELEMENTS];
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl<D: Dimension> DerefMut for Tensor<D> where bound!(inner D): Sized {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
+impl<D: Dimension> AsRef<Self> for Tensor<D> where bound!(inner D): Sized {
+    fn as_ref(&self) -> &Self {
+        self
+    }
+}
+
+impl<D: Dimension> AsMut<Self> for Tensor<D> where bound!(inner D): Sized {
+    fn as_mut(&mut self) -> &mut Self {
+        self
+    }
 }
 
 impl<D: Dimension> Tensor<D> where bound!(inner D): Sized {
@@ -69,13 +113,19 @@ impl<D: Dimension> Tensor<D> where bound!(inner D): Sized {
 
     pub fn map_each_in_place<F: Fn(f32) -> f32>(&mut self, f: F) {
         let f = &f;
-        self.inner.iter_mut().for_each(|i| *i = f(*i));
+        self.iter_mut().for_each(|i| *i = f(*i));
     }
 
     pub fn map_zip_ref_in_place<F: Fn(f32, f32) -> f32>(&mut self, r: &Self, f: F) {
         let f = &f;
-        self.inner.iter_mut().zip(r.inner.iter()).for_each(|(i, j)| *i = f(*i, *j));
+        self.iter_mut().zip(r.iter()).for_each(|(i, j)| *i = f(*i, *j));
     }
+}
+
+pub trait Dimension {
+    const ORDER: usize;
+    const DIMENSIONS: &[usize];
+    const NUM_ELEMENTS: usize;
 }
 
 macro_rules! dim {
@@ -105,7 +155,7 @@ macro_rules! dim {
             pub fn up_conv(self) -> Tensor<$fn<$($ti,)* 1>> {
                 // SAFETY: A tensor of size […] and […, 1] is the same
                 unsafe {
-                    Tensor { inner: *core::mem::transmute::<&[f32; <$tn<$($ti),*> as Dimension>::NUM_ELEMENTS], &[f32; <$fn<$($ti,)* 1> as Dimension>::NUM_ELEMENTS]>(&self.inner) }
+                    Tensor { inner: *core::mem::transmute::<&[f32; <$tn<$($ti),*> as Dimension>::NUM_ELEMENTS], &[f32; <$fn<$($ti,)* 1> as Dimension>::NUM_ELEMENTS]>(&self) }
                 }
             }
         }
@@ -117,7 +167,7 @@ macro_rules! dim {
             pub fn down_conv(self) -> Tensor<$tn<$($ti),*>> {
                 // SAFETY: A tensor of size […, 1] and […] is the same
                 unsafe {
-                    Tensor { inner: *core::mem::transmute::<&[f32; <$fn<$($ti,)* 1> as Dimension>::NUM_ELEMENTS], &[f32; <$tn<$($ti),*> as Dimension>::NUM_ELEMENTS]>(&self.inner) }
+                    Tensor { inner: *core::mem::transmute::<&[f32; <$fn<$($ti,)* 1> as Dimension>::NUM_ELEMENTS], &[f32; <$tn<$($ti),*> as Dimension>::NUM_ELEMENTS]>(&self) }
                 }
             }
         }

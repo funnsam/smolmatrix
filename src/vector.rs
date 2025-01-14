@@ -114,7 +114,7 @@ impl<const S: usize> Vector<S> where bound!(Dim2<1, S>): Sized {
     pub fn into_horizontal(self) -> HVector<S> where bound!(Dim1<S>): Sized {
         // SAFETY: a tensor and it's transposed variant are the same size
         unsafe {
-            HVector { inner: *core::mem::transmute::<&[f32; <Dim2<1, S> as Dimension>::NUM_ELEMENTS], &[f32; <Dim1<S> as Dimension>::NUM_ELEMENTS]>(&self.inner) }
+            HVector { inner: *core::mem::transmute::<&[f32; <Dim2<1, S> as Dimension>::NUM_ELEMENTS], &[f32; <Dim1<S> as Dimension>::NUM_ELEMENTS]>(&self) }
         }
     }
 }
@@ -124,7 +124,7 @@ impl<const S: usize> HVector<S> where bound!(Dim1<S>): Sized {
     pub fn into_vertical(self) -> Vector<S> where bound!(Dim2<1, S>): Sized {
         // SAFETY: a tensor and it's transposed variant are the same size
         unsafe {
-            Vector { inner: *core::mem::transmute::<&[f32; <Dim1<S> as Dimension>::NUM_ELEMENTS], &[f32; <Dim2<1, S> as Dimension>::NUM_ELEMENTS]>(&self.inner) }
+            Vector { inner: *core::mem::transmute::<&[f32; <Dim1<S> as Dimension>::NUM_ELEMENTS], &[f32; <Dim2<1, S> as Dimension>::NUM_ELEMENTS]>(&self) }
         }
     }
 }
