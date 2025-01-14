@@ -6,6 +6,9 @@ use core::fmt;
 
 mod index;
 mod ops;
+pub mod vector;
+
+trait Seal {}
 
 #[macro_export]
 /// Used for generic `where` [`Dimension`] bounds.
@@ -120,11 +123,13 @@ macro_rules! dim {
         }
     };
     ($n:tt $t:tt $d:tt $ord:tt $($i:tt),*) => {
-        #[doc = concat!("Marker object representing a ", $d, "-dimensional size. This struct contains a private empty")]
-        #[doc = "tuple so that it isn't constructable."]
+        #[doc = concat!("Marker object representing a ", $d, "-dimensional size. This struct")]
+        #[doc = "contains a private empty tuple so that it isn't constructable."]
         #[derive(Debug, Clone, PartialEq)]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         pub struct $n<$(const $i: usize),*>(pub(self) ());
+
+        impl<$(const $i: usize),*> Seal for $n<$($i),*> {}
 
         impl<$(const $i: usize),*> Dimension for $n<$($i),*> {
             const ORDER: usize = $d;
@@ -167,7 +172,7 @@ macro_rules! hvector {
 
 #[macro_export]
 macro_rules! matrix {
-    ($w: tt x $h: tt $([$($v: expr),* $(,)?])*) => {{
+    ($w:tt x $h:tt $([$($v:expr),* $(,)?])*) => {{
         let mut m = $crate::Matrix::<$w, $h>::new_filled(0.0);
 
         $crate::matrix_fill!(m, 0, $([$($v,)*])*);
@@ -176,13 +181,14 @@ macro_rules! matrix {
     }};
 }
 
+#[doc(hidden)]
 #[macro_export]
 macro_rules! matrix_fill {
-    ($m: expr, $y: expr, [$($v: expr,)+] $($rest: tt)*) => {{
+    ($m:expr, $y:expr, [$($v:expr,)+] $($rest:tt)*) => {{
         $crate::matrix_fill!($m, $y, 0, $($v,)*);
         $crate::matrix_fill!($m, $y + 1, $($rest)*);
     }};
-    ($m: expr, $y: expr, $x: expr, $v: expr, $($rest: tt)*) => {{
+    ($m: expr, $y: expr, $x: expr, $v: expr, $($rest:tt)*) => {{
         $m[[$x, $y]] = $v;
         $crate::matrix_fill!($m, $y, $x + 1, $($rest)*);
     }};
@@ -191,17 +197,22 @@ macro_rules! matrix_fill {
     ($m: expr, $y: expr, $x: expr,) => {};
 }
 
+#[doc(hidden)]
+#[macro_export]
+macro_rules! _vector_swap {
+    ($at:expr, $vector:expr, $orig:expr, $idx:tt $($rest:tt)*) => {{
+        $vector[$at] = $orig[$idx];
+        $crate::_vector_swap!($at + 1, $vector, $orig, $($rest)*);
+    }};
+    ($at:expr, $vector:expr, $orig:expr,) => {};
+}
+
 #[macro_export]
 macro_rules! vector_swap {
-    (@ $at: expr, $vector: expr, $orig: expr, $idx: tt $($rest: tt)*) => {{
-        $vector[$at] = $orig[$idx];
-        crate::vector_swap!(@ $at + 1, $vector, $orig, $($rest)*);
-    }};
-    (@ $at: expr, $vector: expr, $orig: expr,) => {};
-    ($vector: expr, $($idx: tt)*) => {{
+    ($vector:expr, $($idx:tt)*) => {{
         let mut og = $vector;
         let mut v = $vector.clone();
-        crate::vector_swap!(@ 0, v, og, $($idx)*);
+        $crate::_vector_swap!(0, v, og, $($idx)*);
         v
     }};
 }

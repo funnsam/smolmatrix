@@ -34,72 +34,6 @@ impl<D: Dimension> IndexMut<[usize; D::ORDER]> for Tensor<D> where bound!(D): Si
     }
 }
 
-impl<const W: usize> Index<usize> for HVector<W> where bound!(Dim1<W>): Sized {
-    type Output = f32;
-
-    #[inline]
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.inner[index]
-    }
-}
-
-impl<const W: usize> IndexMut<usize> for HVector<W> where bound!(Dim1<W>): Sized {
-    #[inline]
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.inner[index]
-    }
-}
-
-impl<const H: usize> Index<usize> for Vector<H> where bound!(Dim2<1, H>): Sized {
-    type Output = f32;
-
-    #[inline]
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.inner[index]
-    }
-}
-
-impl<const H: usize> IndexMut<usize> for Vector<H> where bound!(Dim2<1, H>): Sized {
-    #[inline]
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.inner[index]
-    }
-}
-
-impl<const W: usize> HVector<W> where bound!(Dim1<W>): Sized {
-    pub fn x(&self) -> f32 { self[0] }
-    pub fn y(&self) -> f32 { self[1] }
-    pub fn z(&self) -> f32 { self[2] }
-    pub fn w(&self) -> f32 { self[3] }
-
-    pub fn x_ref(&self) -> &f32 { &self[0] }
-    pub fn y_ref(&self) -> &f32 { &self[1] }
-    pub fn z_ref(&self) -> &f32 { &self[2] }
-    pub fn w_ref(&self) -> &f32 { &self[3] }
-
-    pub fn x_mut(&mut self) -> &mut f32 { &mut self[0] }
-    pub fn y_mut(&mut self) -> &mut f32 { &mut self[1] }
-    pub fn z_mut(&mut self) -> &mut f32 { &mut self[2] }
-    pub fn w_mut(&mut self) -> &mut f32 { &mut self[3] }
-}
-
-impl<const H: usize> Vector<H> where bound!(Dim2<1, H>): Sized {
-    pub fn x(&self) -> f32 { self[0] }
-    pub fn y(&self) -> f32 { self[1] }
-    pub fn z(&self) -> f32 { self[2] }
-    pub fn w(&self) -> f32 { self[3] }
-
-    pub fn x_ref(&self) -> &f32 { &self[0] }
-    pub fn y_ref(&self) -> &f32 { &self[1] }
-    pub fn z_ref(&self) -> &f32 { &self[2] }
-    pub fn w_ref(&self) -> &f32 { &self[3] }
-
-    pub fn x_mut(&mut self) -> &mut f32 { &mut self[0] }
-    pub fn y_mut(&mut self) -> &mut f32 { &mut self[1] }
-    pub fn z_mut(&mut self) -> &mut f32 { &mut self[2] }
-    pub fn w_mut(&mut self) -> &mut f32 { &mut self[3] }
-}
-
 #[cfg(test)]
 #[test]
 fn scalar() {
@@ -118,16 +52,6 @@ fn hvector() {
     a[[1]] = 2.0;
     a[[2]] = 3.0;
     assert_eq!(a, HVector { inner: [1.0, 2.0, 3.0] });
-
-    a[0] = 4.0;
-    a[1] = 5.0;
-    a[2] = 6.0;
-    assert_eq!(a, HVector { inner: [4.0, 5.0, 6.0] });
-
-    *a.x_mut() = 7.0;
-    *a.y_mut() = 8.0;
-    *a.z_mut() = 9.0;
-    assert_eq!(a, HVector { inner: [7.0, 8.0, 9.0] });
 }
 
 #[cfg(test)]
@@ -139,16 +63,6 @@ fn vector() {
     a[[0, 1]] = 2.0;
     a[[0, 2]] = 3.0;
     assert_eq!(a, Vector { inner: [1.0, 2.0, 3.0] });
-
-    a[0] = 4.0;
-    a[1] = 5.0;
-    a[2] = 6.0;
-    assert_eq!(a, Vector { inner: [4.0, 5.0, 6.0] });
-
-    *a.x_mut() = 7.0;
-    *a.y_mut() = 8.0;
-    *a.z_mut() = 9.0;
-    assert_eq!(a, Vector { inner: [7.0, 8.0, 9.0] });
 }
 
 #[cfg(test)]

@@ -140,12 +140,19 @@ impl<D: Dimension> Tensor<D> where bound!(inner D): Sized {
     pub fn hadamard_product(self, rhs: &Self) -> Self {
         self.map_zip_ref(rhs, |i, j| i * j)
     }
+
+    /// Computes the inner product of the given tensors.
+    #[inline]
+    pub fn dot(&self, b: &Self) -> f32 {
+        self.inner.iter().zip(b.inner.iter()).map(|(i, j)| *i * *j).sum()
+    }
 }
 
 impl<const W: usize, const H: usize> Matrix<W, H> where
     bound!(inner Dim2<W, H>): Sized,
     bound!(Dim2<H, W>): Sized,
 {
+    /// Transposes the given matrix.
     pub fn transpose(self) -> Matrix<H, W> {
         let mut t = Matrix::new_filled(0.0);
 
@@ -156,92 +163,6 @@ impl<const W: usize, const H: usize> Matrix<W, H> where
         }
 
         t
-    }
-}
-
-impl<const W: usize> HVector<W> where bound!(Dim1<W>): Sized {
-    #[cfg(feature = "std")]
-    pub fn length(&self) -> f32 {
-        self.length_squared().sqrt()
-    }
-
-    pub fn length_squared(&self) -> f32 {
-        let mut acc = 0.0;
-
-        for x in 0..W {
-            acc += self[x] * self[x];
-        }
-
-        acc
-    }
-
-    #[cfg(feature = "std")]
-    pub fn unit(self) -> Self {
-        let len = self.length();
-        self / len
-    }
-
-    pub fn dot(&self, b: &Self) -> f32 {
-        let mut dot = 0.0;
-
-        for x in 0..W {
-            dot += self[x] * b[x];
-        }
-
-        dot
-    }
-}
-
-impl<const H: usize> Vector<H> where bound!(Dim2<1, H>): Sized {
-    #[cfg(feature = "std")]
-    pub fn length(&self) -> f32 {
-        self.length_squared().sqrt()
-    }
-
-    pub fn length_squared(&self) -> f32 {
-        let mut acc = 0.0;
-
-        for y in 0..H {
-            acc += self[y] * self[y];
-        }
-
-        acc
-    }
-
-    #[cfg(feature = "std")]
-    pub fn unit(self) -> Self {
-        let len = self.length();
-        self / len
-    }
-
-    pub fn dot(&self, b: &Self) -> f32 {
-        let mut dot = 0.0;
-
-        for y in 0..H {
-            dot += self[y] * b[y];
-        }
-
-        dot
-    }
-}
-
-impl Vector<3> {
-    pub fn cross(&self, b: &Self) -> Self {
-        vector!(3 [
-            self[1] * b[2] - self[2] * b[1],
-            self[2] * b[0] - self[0] * b[2],
-            self[0] * b[1] - self[1] * b[0],
-        ])
-    }
-}
-
-impl HVector<3> {
-    pub fn cross(&self, b: &Self) -> Self {
-        hvector!(3 [
-            self[1] * b[2] - self[2] * b[1],
-            self[2] * b[0] - self[0] * b[2],
-            self[0] * b[1] - self[1] * b[0],
-        ])
     }
 }
 
@@ -273,7 +194,12 @@ macro_rules! convolution {
     };
     ($tensor:tt $D:tt $dim:tt $($i:tt $p:tt $k:tt $b:tt $pv:tt $kv:tt),*) => {
         impl<$(const $p: usize),*> $tensor<$($p),*> where bound!($D<$($p),*>): Sized {
-            /// Computes the convolution.
+            /// Computes the convolution with padded 0.
+            ///
+            /// # Stride
+            /// The `stride` parameter controls the amount that `kernel` moves in each element.
+            #[doc = concat!("Note that it panics when any elememt in `stride[..", $dim, "]` is 0")]
+            #[doc = concat!("or `stride.len() < ", $dim, "`. If unsure, use `&[1; ", $dim, "]`")]
             ///
             /// # Note
             /// Each dimension of the output must be `ceil((self + kernel) / stride) - 1` or else
@@ -385,15 +311,6 @@ fn matrix_transpose() {
         [2.0, 5.0]
         [3.0, 6.0]
     ));
-}
-
-#[cfg(test)]
-#[test]
-fn vector3_cross() {
-    let a = vector!(3 [5.0, 6.0, 2.0]);
-    let b = vector!(3 [1.0, 1.0, 1.0]);
-
-    assert_eq!(a.cross(&b), vector!(3 [4.0, -3.0, -1.0]));
 }
 
 #[cfg(test)]
