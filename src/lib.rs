@@ -165,6 +165,17 @@ macro_rules! dim {
             bound!(inner $tn::<$($ti),*>): Sized,
         {
             /// Convert a tensor up an order.
+            ///
+            /// # Example
+            /// ```ignore
+            /// #![allow(incomplete_features)]
+            /// #![feature(generic_const_exprs)]
+            ///
+            /// use smolmatrix::*;
+            ///
+            /// let a = Scalar::new_filled(1.2).up_conv();
+            /// assert_eq!(a, HVector { inner: [1.2] });
+            /// ```
             pub fn up_conv(self) -> Tensor<$fn<$($ti,)* 1>> {
                 // SAFETY: A tensor of size […] and […, 1] is the same
                 unsafe {
@@ -173,6 +184,25 @@ macro_rules! dim {
             }
 
             /// Join multiple tensors into a tensor with an order higher by copying each element.
+            ///
+            /// # Example
+            /// ```ignore
+            /// #![allow(incomplete_features)]
+            /// #![feature(generic_const_exprs)]
+            ///
+            /// use smolmatrix::*;
+            ///
+            /// let a = HVector::join([
+            ///     &hvector!(3 [1.0, 2.0, 3.0]),
+            ///     &hvector!(3 [4.0, 5.0, 6.0]),
+            ///     &hvector!(3 [7.0, 8.0, 9.0]),
+            /// ]);
+            /// assert_eq!(a, matrix!(3 x 3
+            ///     [1.0, 2.0, 3.0]
+            ///     [4.0, 5.0, 6.0]
+            ///     [7.0, 8.0, 9.0]
+            /// ));
+            /// ```
             pub fn join<const N: usize>(list: [&Self; N]) -> Tensor<$fn<$($ti,)* N>> where
                 bound!(inner $fn<$($ti,)* N>): Sized
             {
@@ -190,6 +220,17 @@ macro_rules! dim {
             bound!(inner $tn::<$($ti),*>): Sized,
         {
             /// Convert a tensor down an order if its last dimension is 1.
+            ///
+            /// # Example
+            /// ```ignore
+            /// #![allow(incomplete_features)]
+            /// #![feature(generic_const_exprs)]
+            ///
+            /// use smolmatrix::*;
+            ///
+            /// let a = hvector!(1 [1.2]).down_conv();
+            /// assert_eq!(a, Scalar { inner: [1.2] });
+            /// ```
             pub fn down_conv(self) -> Tensor<$tn<$($ti),*>> {
                 // SAFETY: A tensor of size […, 1] and […] is the same
                 unsafe {
