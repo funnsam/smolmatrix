@@ -2,7 +2,7 @@
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]
 
-use core::{borrow::{Borrow, BorrowMut}, fmt, ops::{Deref, DerefMut}};
+use core::{borrow::{Borrow, BorrowMut}, fmt, ops::{Deref, DerefMut, Index, IndexMut}};
 
 mod index;
 mod ops;
@@ -10,7 +10,7 @@ pub mod vector;
 
 trait Seal {}
 
-impl<D: Dimension> Seal for Tensor<D> where bound!(inner D): Sized {}
+impl<D: Dimension> Seal for Tensor<D> {}
 impl<T, const S: usize> Seal for [T; S] {}
 
 #[allow(private_bounds)]
@@ -20,100 +20,46 @@ impl<T, const S: usize> SameSized<[T; S]> for [T; S] {}
 
 impl<D: Dimension, E: Dimension> SameSized<E> for D where
     [f32; D::NUM_ELEMENTS]: SameSized<[f32; E::NUM_ELEMENTS]>,
-    bound!(inner D): Sized,
-    bound!(inner E): Sized,
 {}
 
-#[macro_export]
-/// Used for generic `where` [`Dimension`] bounds.
-///
-/// # Usage
-/// An optional `inner` parameter is passed when you don't need access to indexing.
-///
-/// # Example
-/// ```
-/// #![allow(incomplete_features)]
-/// #![feature(generic_const_exprs)]
-///
-/// use smolmatrix::*;
-///
-/// struct MyTensoredStruct<D: Dimension> (Tensor<D>) where bound!(inner D): Sized;
-///
-/// impl<D: Dimension> MyTensoredStruct<D> where bound!(D): Sized {
-///     pub fn get(&self, index: [usize; D::ORDER]) -> f32 {
-///         self.0[index]
-///     }
-/// }
-/// ```
-macro_rules! bound {
-    (inner $dim:ty) => {
-        [f32; <$dim as $crate::Dimension>::NUM_ELEMENTS]
-    };
-    ($dim:ty) => {
-        ($crate::bound!(inner $dim), [usize; <$dim as $crate::Dimension>::ORDER])
-    };
-}
+impl<D: Dimension, E: Dimension + SameSized<D>> SameSized<Tensor<E>> for Tensor<D> {}
 
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Tensor<D: Dimension> where bound!(inner D): Sized {
-    pub inner: [f32; D::NUM_ELEMENTS],
+pub struct Tensor<D: Dimension> {
+    pub inner: D::ArrayForm,
 }
 
-impl<D: Dimension> AsRef<[f32; D::NUM_ELEMENTS]> for Tensor<D> where bound!(inner D): Sized {
-    fn as_ref(&self) -> &[f32; D::NUM_ELEMENTS] {
+impl<D: Dimension> AsRef<D::ArrayForm> for Tensor<D> {
+    fn as_ref(&self) -> &D::ArrayForm {
         &self.inner
     }
 }
 
-impl<D: Dimension> AsMut<[f32; D::NUM_ELEMENTS]> for Tensor<D> where bound!(inner D): Sized {
-    fn as_mut(&mut self) -> &mut [f32; D::NUM_ELEMENTS] {
+impl<D: Dimension> AsMut<D::ArrayForm> for Tensor<D> {
+    fn as_mut(&mut self) -> &mut D::ArrayForm {
         &mut self.inner
     }
 }
 
-impl<D: Dimension> Borrow<[f32; D::NUM_ELEMENTS]> for Tensor<D> where bound!(inner D): Sized {
-    fn borrow(&self) -> &[f32; D::NUM_ELEMENTS] {
-        &self.inner
-    }
-}
-
-impl<D: Dimension> BorrowMut<[f32; D::NUM_ELEMENTS]> for Tensor<D> where bound!(inner D): Sized {
-    fn borrow_mut(&mut self) -> &mut [f32; D::NUM_ELEMENTS] {
-        &mut self.inner
-    }
-}
-
-impl<D: Dimension> Deref for Tensor<D> where bound!(inner D): Sized {
-    type Target = [f32; D::NUM_ELEMENTS];
+impl<D: Dimension> Deref for Tensor<D> {
+    type Target = D::ArrayForm;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl<D: Dimension> DerefMut for Tensor<D> where bound!(inner D): Sized {
+impl<D: Dimension> DerefMut for Tensor<D> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
 }
 
-impl<D: Dimension> AsRef<Self> for Tensor<D> where bound!(inner D): Sized {
-    fn as_ref(&self) -> &Self {
-        self
-    }
-}
-
-impl<D: Dimension> AsMut<Self> for Tensor<D> where bound!(inner D): Sized {
-    fn as_mut(&mut self) -> &mut Self {
-        self
-    }
-}
-
-impl<D: Dimension> Tensor<D> where bound!(inner D): Sized {
+impl<D: Dimension> Tensor<D> {
     /// Create a new [`Tensor`] with values filled from `value`.
     pub fn new_filled(value: f32) -> Self {
-        Self { inner: [value; D::NUM_ELEMENTS] }
+        Self::from_iter(core::iter::repeat(value))
     }
 
     pub fn map_each<F: Fn(f32) -> f32>(mut self, f: F) -> Self {
@@ -128,21 +74,23 @@ impl<D: Dimension> Tensor<D> where bound!(inner D): Sized {
 
     pub fn map_each_in_place<F: Fn(f32) -> f32>(&mut self, f: F) {
         let f = &f;
-        self.iter_mut().for_each(|i| *i = f(*i));
+        self.inner.as_mut().iter_mut().for_each(|i| *i = f(*i));
     }
 
     pub fn map_zip_ref_in_place<F: Fn(f32, f32) -> f32>(&mut self, r: &Self, f: F) {
         let f = &f;
-        self.iter_mut().zip(r.iter()).for_each(|(i, j)| *i = f(*i, *j));
+        self.inner.as_mut()
+            .iter_mut()
+            .zip(r.inner.as_ref().iter())
+            .for_each(|(i, j)| *i = f(*i, *j));
     }
 
     pub fn reshape<E: Dimension>(self) -> Tensor<E> where
-        bound!(inner E): Sized,
         E: SameSized<D>,
     {
-        // SAFETY: D and E are the same size bounded by the 2nd where clause
+        // SAFETY: D and E are the same size bounded by the where clause
         unsafe {
-            Tensor { inner: *core::mem::transmute::<&[f32; D::NUM_ELEMENTS], &[f32; E::NUM_ELEMENTS]>(&self) }
+            Tensor { inner: core::mem::transmute_copy(&core::mem::ManuallyDrop::new(self.inner)) }
         }
     }
 }
@@ -151,7 +99,7 @@ impl<D: Dimension> Tensor<D> where bound!(inner D): Sized {
 ///
 /// This trait is sealed so that no possible underlying unsafe code are unsafe.
 #[allow(private_bounds)]
-pub trait Dimension: Seal {
+pub trait Dimension: fmt::Debug + Clone + PartialEq + Seal {
     /// The order (or rank) of this dimension
     const ORDER: usize;
 
@@ -162,14 +110,33 @@ pub trait Dimension: Seal {
     ///
     /// This value should be equal to the product of every element of [`Self::DIMENSIONS`]
     const NUM_ELEMENTS: usize;
+
+    type ArrayForm: Clone
+        + AsRef<[f32]>
+        + AsMut<[f32]>
+        + Borrow<[f32]>
+        + BorrowMut<[f32]>
+        + fmt::Debug
+        + PartialEq
+        + Sized
+        + for<'a> TryFrom<&'a [f32]>;
+
+    type Indicies: Clone
+        + AsRef<[usize]>
+        + AsMut<[usize]>
+        + Borrow<[usize]>
+        + BorrowMut<[usize]>
+        + fmt::Debug
+        + PartialEq
+        + Sized
+        + for<'a> TryFrom<&'a [usize]>;
 }
 
 macro_rules! dim {
     (conv $fn:tt <=> $tn:tt $($ti:tt),*) => {
         impl<$(const $ti: usize),*> From<Tensor<$fn<$($ti,)* 1>>> for Tensor<$tn<$($ti),*>> where
-            bound!(inner $fn::<$($ti,)* 1>): Sized,
-            bound!(inner $tn::<$($ti),*>): Sized,
-            $tn<$($ti),*>: SameSized<$fn<$($ti,)* 1>>,
+            $tn<$($ti,)*>: SameSized<$fn<$($ti,)* 1>>,
+            $fn<$($ti,)* 1>: Dimension<ArrayForm = [f32; 1 $(* $ti)*]>,
         {
             fn from(value: Tensor<$fn<$($ti,)* 1>>) -> Self {
                 value.down_conv()
@@ -177,9 +144,7 @@ macro_rules! dim {
         }
 
         impl<$(const $ti: usize),*> From<Tensor<$tn<$($ti),*>>> for Tensor<$fn<$($ti,)* 1>> where
-            bound!(inner $fn::<$($ti,)* 1>): Sized,
-            bound!(inner $tn::<$($ti),*>): Sized,
-            $fn<$($ti,)* 1>: SameSized<$tn<$($ti),*>>,
+            $fn<$($ti,)* 1>: Dimension<ArrayForm = [f32; 1 $(* $ti)*]> + SameSized<$tn<$($ti),*>>,
         {
             fn from(value: Tensor<$tn<$($ti),*>>) -> Self {
                 value.up_conv()
@@ -187,9 +152,7 @@ macro_rules! dim {
         }
 
         impl<$(const $ti: usize),*> Tensor<$tn<$($ti),*>> where
-            bound!(inner $fn::<$($ti,)* 1>): Sized,
-            bound!(inner $tn::<$($ti),*>): Sized,
-            $fn<$($ti,)* 1>: SameSized<$tn<$($ti),*>>,
+            $fn<$($ti,)* 1>: Dimension<ArrayForm = [f32; 1 $(* $ti)*]> + SameSized<$tn<$($ti),*>>,
         {
             /// Convert a tensor up an order.
             ///
@@ -228,21 +191,24 @@ macro_rules! dim {
             /// ));
             /// ```
             pub fn join<const N: usize>(list: [&Self; N]) -> Tensor<$fn<$($ti,)* N>> where
-                bound!(inner $fn<$($ti,)* N>): Sized
+                [f32; 1 $(* $ti)* * N]: Sized,
             {
-                let mut joined = Tensor::new_filled(0.0);
-                for (i, e) in list.into_iter().enumerate() {
-                    joined.inner[i $(* $ti)*..(i + 1) $(* $ti)*].copy_from_slice(&**e);
-                }
+                // SAFETY: every element are copied from the inputs
+                unsafe {
+                    let mut joined: Tensor<$fn<$($ti,)* N>> = core::mem::MaybeUninit::uninit().assume_init();
 
-                joined
+                    for (i, e) in list.into_iter().enumerate() {
+                        joined.inner[i $(* $ti)*..(i + 1) $(* $ti)*].copy_from_slice(&**e);
+                    }
+
+                    joined
+                }
             }
         }
 
         impl<$(const $ti: usize),*> Tensor<$fn<$($ti,)* 1>> where
-            bound!(inner $fn::<$($ti,)* 1>): Sized,
-            bound!(inner $tn::<$($ti),*>): Sized,
-            $tn<$($ti),*>: SameSized<$fn<$($ti,)* 1>>,
+            $tn<$($ti,)*>: SameSized<$fn<$($ti,)* 1>>,
+            $fn<$($ti,)* 1>: Dimension<ArrayForm = [f32; 1 $(* $ti)*]>,
         {
             /// Convert a tensor down an order if its last dimension is 1.
             ///
@@ -270,10 +236,33 @@ macro_rules! dim {
 
         impl<$(const $i: usize),*> Seal for $n<$($i),*> {}
 
-        impl<$(const $i: usize),*> Dimension for $n<$($i),*> {
+        impl<$(const $i: usize),*> Dimension for $n<$($i),*> where [f32; 1 $(* $i)*]: Sized {
             const ORDER: usize = $d;
             const DIMENSIONS: &[usize] = &[$($i),*];
             const NUM_ELEMENTS: usize = 1 $(* $i)*;
+
+            type ArrayForm = [f32; 1 $(* $i)*];
+            type Indicies = [usize; $d];
+        }
+
+        impl<$(const $i: usize),*> Index<[usize; $d]> for Tensor<$n<$($i),*>> where
+            [f32; 1 $(* $i)*]: Sized,
+        {
+            type Output = f32;
+
+            #[inline]
+            fn index(&self, index: [usize; $d]) -> &Self::Output {
+                &self.inner.as_ref()[Self::index_of(&index)]
+            }
+        }
+
+        impl<$(const $i: usize),*> IndexMut<[usize; $d]> for Tensor<$n<$($i),*>> where
+            [f32; 1 $(* $i)*]: Sized,
+        {
+            #[inline]
+            fn index_mut(&mut self, index: [usize; $d]) -> &mut Self::Output {
+                &mut self.inner.as_mut()[Self::index_of(&index)]
+            }
         }
 
         #[doc = concat!("A ", $d, "-", $ord, " order tensor.")]
@@ -417,14 +406,28 @@ macro_rules! vector_swap {
     }};
 }
 
-impl<D: Dimension> FromIterator<f32> for Tensor<D> where bound!(inner D): Sized {
+impl<D: Dimension> FromIterator<f32> for Tensor<D> {
     fn from_iter<T: IntoIterator<Item = f32>>(iter: T) -> Self {
-        let mut iter = iter.into_iter();
-        Self { inner: core::array::from_fn(|_| iter.next().unwrap()) }
+        let mut inner: D::ArrayForm = unsafe { core::mem::MaybeUninit::uninit().assume_init() };
+
+        let mut wrote = 0;
+        for (i, e) in iter.into_iter().enumerate().take(D::NUM_ELEMENTS) {
+            inner.as_mut()[i] = e;
+            wrote = i + 1;
+        }
+
+        if wrote < D::NUM_ELEMENTS {
+            panic!("expected iterator with at least {} items, but only got {wrote} before end of \
+            iterator", D::NUM_ELEMENTS);
+        }
+
+        Self { inner }
     }
 }
 
-impl<const W: usize, const H: usize> fmt::Display for Matrix<W, H> where bound!(Dim2<W, H>): Sized {
+impl<const W: usize, const H: usize> fmt::Display for Matrix<W, H> where
+    [f32; 1 * W * H]: Sized,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         struct LenOf {
             len: usize,
@@ -443,7 +446,7 @@ impl<const W: usize, const H: usize> fmt::Display for Matrix<W, H> where bound!(
                 use core::fmt::Write;
 
                 let mut len = LenOf { len: 0 };
-                write!(&mut len, "{}", self.inner[Self::index_of([x, y])])?;
+                write!(&mut len, "{}", self.inner[Self::index_of(&[x, y])])?;
                 align[x] = align[x].max(len.len);
             }
         }
@@ -455,7 +458,7 @@ impl<const W: usize, const H: usize> fmt::Display for Matrix<W, H> where bound!(
             write!(f, "│ ")?;
 
             for x in 0..W {
-                write!(f, "{:^1$} ", self.inner[Self::index_of([x, y])], align[x])?;
+                write!(f, "{:^1$} ", self.inner[Self::index_of(&[x, y])], align[x])?;
             }
 
             writeln!(f, "│")?;

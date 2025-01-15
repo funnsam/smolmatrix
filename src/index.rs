@@ -1,36 +1,19 @@
-use core::ops::{Index, IndexMut};
 use crate::*;
 
-impl<D: Dimension> Tensor<D> where bound!(D): Sized {
+impl<D: Dimension> Tensor<D> {
     #[inline]
-    pub fn index_of(index: [usize; D::ORDER]) -> usize {
+    pub fn index_of(index: &[usize]) -> usize {
         let mut i = 0;
         let mut m = 1;
 
         for (di, (idx, dim)) in index.into_iter().zip(D::DIMENSIONS.into_iter()).enumerate() {
-            assert!(idx < *dim, "out of bounds in dimension number {di} ({idx} >= {dim})");
+            assert!(idx < dim, "out of bounds in dimension number {di} ({idx} >= {dim})");
 
             i += idx * m;
             m *= *dim;
         }
 
         i
-    }
-}
-
-impl<D: Dimension> Index<[usize; D::ORDER]> for Tensor<D> where bound!(D): Sized {
-    type Output = f32;
-
-    #[inline]
-    fn index(&self, index: [usize; D::ORDER]) -> &Self::Output {
-        &self.inner[Self::index_of(index)]
-    }
-}
-
-impl<D: Dimension> IndexMut<[usize; D::ORDER]> for Tensor<D> where bound!(D): Sized {
-    #[inline]
-    fn index_mut(&mut self, index: [usize; D::ORDER]) -> &mut Self::Output {
-        &mut self.inner[Self::index_of(index)]
     }
 }
 

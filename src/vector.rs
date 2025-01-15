@@ -2,10 +2,7 @@ use core::ops::{Index, IndexMut};
 
 use crate::*;
 
-pub trait VectorDim: Dimension {
-    const SIZE: usize;
-}
-
+pub trait VectorDim: Dimension {}
 pub trait VectorDim2: VectorDim {}
 pub trait VectorDim3: VectorDim {}
 pub trait VectorDim4: VectorDim {}
@@ -14,8 +11,7 @@ pub trait VectorDim6: VectorDim {}
 
 macro_rules! dim {
     ($name:tt $($one:tt)*) => {
-        impl<const S: usize> VectorDim for $name<$($one,)* S> {
-            const SIZE: usize = S;
+        impl<const S: usize> VectorDim for $name<$($one,)* S> where [f32; 1 $(* $one)* * S]: Sized {
         }
 
         impl VectorDim2 for $name<$($one,)* 2> {}
@@ -32,37 +28,37 @@ dim!(Dim4 1 1 1);
 dim!(Dim5 1 1 1 1);
 dim!(Dim6 1 1 1 1 1);
 
-impl<D: VectorDim> Index<usize> for Tensor<D> where bound!(inner D): Sized {
+impl<D: VectorDim> Index<usize> for Tensor<D> {
     type Output = f32;
 
     #[inline]
     fn index(&self, index: usize) -> &Self::Output {
-        &self.inner[index]
+        &self.inner.as_ref()[index]
     }
 }
 
-impl<D: VectorDim> IndexMut<usize> for Tensor<D> where bound!(inner D): Sized {
+impl<D: VectorDim> IndexMut<usize> for Tensor<D> {
     #[inline]
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.inner[index]
+        &mut self.inner.as_mut()[index]
     }
 }
 
-impl<D: VectorDim> Tensor<D> where bound!(D): Sized {
-    pub fn x(&self) -> f32 { self[0] }
-    pub fn y(&self) -> f32 { self[1] }
-    pub fn z(&self) -> f32 { self[2] }
-    pub fn w(&self) -> f32 { self[3] }
+impl<D: VectorDim> Tensor<D> {
+    pub fn x(&self) -> f32 { self.inner.as_ref()[0] }
+    pub fn y(&self) -> f32 { self.inner.as_ref()[1] }
+    pub fn z(&self) -> f32 { self.inner.as_ref()[2] }
+    pub fn w(&self) -> f32 { self.inner.as_ref()[3] }
 
-    pub fn x_ref(&self) -> &f32 { &self[0] }
-    pub fn y_ref(&self) -> &f32 { &self[1] }
-    pub fn z_ref(&self) -> &f32 { &self[2] }
-    pub fn w_ref(&self) -> &f32 { &self[3] }
+    pub fn x_ref(&self) -> &f32 { &self.inner.as_ref()[0] }
+    pub fn y_ref(&self) -> &f32 { &self.inner.as_ref()[1] }
+    pub fn z_ref(&self) -> &f32 { &self.inner.as_ref()[2] }
+    pub fn w_ref(&self) -> &f32 { &self.inner.as_ref()[3] }
 
-    pub fn x_mut(&mut self) -> &mut f32 { &mut self[0] }
-    pub fn y_mut(&mut self) -> &mut f32 { &mut self[1] }
-    pub fn z_mut(&mut self) -> &mut f32 { &mut self[2] }
-    pub fn w_mut(&mut self) -> &mut f32 { &mut self[3] }
+    pub fn x_mut(&mut self) -> &mut f32 { &mut self.inner.as_mut()[0] }
+    pub fn y_mut(&mut self) -> &mut f32 { &mut self.inner.as_mut()[1] }
+    pub fn z_mut(&mut self) -> &mut f32 { &mut self.inner.as_mut()[2] }
+    pub fn w_mut(&mut self) -> &mut f32 { &mut self.inner.as_mut()[3] }
 
     /// Computes the length from `self` to `[0, …]`.
     #[inline]
@@ -74,13 +70,7 @@ impl<D: VectorDim> Tensor<D> where bound!(D): Sized {
     /// Computes the squared length from `self` to `[0, …]`.
     #[inline]
     pub fn length_squared(&self) -> f32 {
-        let mut acc = 0.0;
-
-        for i in 0..D::SIZE {
-            acc += self[i] * self[i];
-        }
-
-        acc
+        self.inner.as_ref().iter().map(|i| i * i).sum()
     }
 
     #[inline]
@@ -91,36 +81,36 @@ impl<D: VectorDim> Tensor<D> where bound!(D): Sized {
     }
 }
 
-impl<D: VectorDim3> Tensor<D> where bound!(D): Sized {
+impl<D: VectorDim3> Tensor<D> {
     #[inline]
     pub fn cross(&self, b: &Self) -> Self {
         let mut new = Self::new_filled(0.0);
 
-        new[0] = self[1] * b[2] - self[2] * b[1];
-        new[1] = self[2] * b[0] - self[0] * b[2];
-        new[2] = self[0] * b[1] - self[1] * b[0];
+        new.inner.as_mut()[0] = self.inner.as_ref()[1] * b.inner.as_ref()[2] - self.inner.as_ref()[2] * b.inner.as_ref()[1];
+        new.inner.as_mut()[1] = self.inner.as_ref()[2] * b.inner.as_ref()[0] - self.inner.as_ref()[0] * b.inner.as_ref()[2];
+        new.inner.as_mut()[2] = self.inner.as_ref()[0] * b.inner.as_ref()[1] - self.inner.as_ref()[1] * b.inner.as_ref()[0];
 
         new
     }
 }
 
-impl<const S: usize> Vector<S> where bound!(inner Dim2<1, S>): Sized {
+impl<const S: usize> Vector<S> where [f32; 1 * 1 * S]: Sized {
     #[inline]
-    pub fn into_horizontal(self) -> HVector<S> where bound!(Dim1<S>): Sized {
-        // SAFETY: a tensor and it's transposed variant are the same size
-        unsafe {
-            HVector { inner: *core::mem::transmute::<&[f32; <Dim2<1, S> as Dimension>::NUM_ELEMENTS], &[f32; <Dim1<S> as Dimension>::NUM_ELEMENTS]>(&self) }
-        }
+    pub fn into_horizontal(self) -> HVector<S> where
+        [f32; 1 * S]: Sized,
+        Dim1<S>: SameSized<Dim2<1, S>>,
+    {
+        self.reshape()
     }
 }
 
-impl<const S: usize> HVector<S> where bound!(inner Dim1<S>): Sized {
+impl<const S: usize> HVector<S> where [f32; 1 * S]: Sized {
     #[inline]
-    pub fn into_vertical(self) -> Vector<S> where bound!(Dim2<1, S>): Sized {
-        // SAFETY: a tensor and it's transposed variant are the same size
-        unsafe {
-            Vector { inner: *core::mem::transmute::<&[f32; <Dim1<S> as Dimension>::NUM_ELEMENTS], &[f32; <Dim2<1, S> as Dimension>::NUM_ELEMENTS]>(&self) }
-        }
+    pub fn into_vertical(self) -> Vector<S> where
+        [f32; 1 * 1 * S]: Sized,
+        Dim2<1, S>: SameSized<Dim1<S>>,
+    {
+        self.reshape()
     }
 }
 

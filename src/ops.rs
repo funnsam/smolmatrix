@@ -1,7 +1,7 @@
 use core::ops::*;
 use crate::*;
 
-impl<D: Dimension> Add<&Self> for Tensor<D> where bound!(inner D): Sized {
+impl<D: Dimension> Add<&Self> for Tensor<D> {
     type Output = Self;
 
     fn add(self, rhs: &Self) -> Self {
@@ -9,7 +9,7 @@ impl<D: Dimension> Add<&Self> for Tensor<D> where bound!(inner D): Sized {
     }
 }
 
-impl<D: Dimension> Add<f32> for Tensor<D> where bound!(inner D): Sized {
+impl<D: Dimension> Add<f32> for Tensor<D> {
     type Output = Self;
 
     fn add(self, rhs: f32) -> Self {
@@ -17,7 +17,7 @@ impl<D: Dimension> Add<f32> for Tensor<D> where bound!(inner D): Sized {
     }
 }
 
-impl<D: Dimension> Sub<&Self> for Tensor<D> where bound!(inner D): Sized {
+impl<D: Dimension> Sub<&Self> for Tensor<D> {
     type Output = Self;
 
     fn sub(self, rhs: &Self) -> Self {
@@ -25,7 +25,7 @@ impl<D: Dimension> Sub<&Self> for Tensor<D> where bound!(inner D): Sized {
     }
 }
 
-impl<D: Dimension> Sub<f32> for Tensor<D> where bound!(inner D): Sized {
+impl<D: Dimension> Sub<f32> for Tensor<D> {
     type Output = Self;
 
     fn sub(self, rhs: f32) -> Self {
@@ -33,7 +33,7 @@ impl<D: Dimension> Sub<f32> for Tensor<D> where bound!(inner D): Sized {
     }
 }
 
-impl<D: Dimension> Mul<f32> for Tensor<D> where bound!(inner D): Sized {
+impl<D: Dimension> Mul<f32> for Tensor<D> {
     type Output = Self;
 
     fn mul(self, rhs: f32) -> Self {
@@ -41,7 +41,7 @@ impl<D: Dimension> Mul<f32> for Tensor<D> where bound!(inner D): Sized {
     }
 }
 
-impl<D: Dimension> Div<f32> for Tensor<D> where bound!(inner D): Sized {
+impl<D: Dimension> Div<f32> for Tensor<D> {
     type Output = Self;
 
     fn div(self, rhs: f32) -> Self {
@@ -49,7 +49,7 @@ impl<D: Dimension> Div<f32> for Tensor<D> where bound!(inner D): Sized {
     }
 }
 
-impl<D: Dimension> Div<&Self> for Tensor<D> where bound!(inner D): Sized {
+impl<D: Dimension> Div<&Self> for Tensor<D> {
     type Output = Self;
 
     fn div(self, rhs: &Self) -> Self {
@@ -57,7 +57,7 @@ impl<D: Dimension> Div<&Self> for Tensor<D> where bound!(inner D): Sized {
     }
 }
 
-impl<D: Dimension> Neg for Tensor<D> where bound!(inner D): Sized {
+impl<D: Dimension> Neg for Tensor<D> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
@@ -65,43 +65,43 @@ impl<D: Dimension> Neg for Tensor<D> where bound!(inner D): Sized {
     }
 }
 
-impl<D: Dimension> AddAssign<&Self> for Tensor<D> where bound!(inner D): Sized {
+impl<D: Dimension> AddAssign<&Self> for Tensor<D> {
     fn add_assign(&mut self, rhs: &Self) {
         self.map_zip_ref_in_place(rhs, |i, j| i + j)
     }
 }
 
-impl<D: Dimension> AddAssign<f32> for Tensor<D> where bound!(inner D): Sized {
+impl<D: Dimension> AddAssign<f32> for Tensor<D> {
     fn add_assign(&mut self, rhs: f32) {
         self.map_each_in_place(|i| i + rhs)
     }
 }
 
-impl<D: Dimension> SubAssign<&Self> for Tensor<D> where bound!(inner D): Sized {
+impl<D: Dimension> SubAssign<&Self> for Tensor<D> {
     fn sub_assign(&mut self, rhs: &Self) {
         self.map_zip_ref_in_place(rhs, |i, j| i - j)
     }
 }
 
-impl<D: Dimension> SubAssign<f32> for Tensor<D> where bound!(inner D): Sized {
+impl<D: Dimension> SubAssign<f32> for Tensor<D> {
     fn sub_assign(&mut self, rhs: f32) {
         self.map_each_in_place(|i| i - rhs)
     }
 }
 
-impl<D: Dimension> MulAssign<f32> for Tensor<D> where bound!(inner D): Sized {
+impl<D: Dimension> MulAssign<f32> for Tensor<D> {
     fn mul_assign(&mut self, rhs: f32) {
         self.map_each_in_place(|i| i * rhs)
     }
 }
 
-impl<D: Dimension> DivAssign<f32> for Tensor<D> where bound!(inner D): Sized {
+impl<D: Dimension> DivAssign<f32> for Tensor<D> {
     fn div_assign(&mut self, rhs: f32) {
         self.map_each_in_place(|i| i / rhs)
     }
 }
 
-impl<D: Dimension> DivAssign<&Self> for Tensor<D> where bound!(inner D): Sized {
+impl<D: Dimension> DivAssign<&Self> for Tensor<D> {
     fn div_assign(&mut self, rhs: &Self) {
         self.map_zip_ref_in_place(rhs, |i, j| i / j)
     }
@@ -110,9 +110,9 @@ impl<D: Dimension> DivAssign<&Self> for Tensor<D> where bound!(inner D): Sized {
 impl<const WAHB: usize, const HA: usize, const WB: usize> Mul<&Matrix<WB, WAHB>>
     for &Matrix<WAHB, HA>
     where
-        bound!(inner Dim2<WAHB, HA>): Sized,
-        bound!(inner Dim2<WB, WAHB>): Sized,
-        bound!(Dim2<WB, HA>): Sized,
+        [f32; 1 * WAHB * HA]: Sized,
+        [f32; 1 * WB * WAHB]: Sized,
+        [f32; 1 * WB * HA]: Sized,
 {
     type Output = Matrix<WB, HA>;
 
@@ -135,7 +135,7 @@ impl<const WAHB: usize, const HA: usize, const WB: usize> Mul<&Matrix<WB, WAHB>>
     }
 }
 
-impl<D: Dimension> Tensor<D> where bound!(inner D): Sized {
+impl<D: Dimension> Tensor<D> {
     /// Computes the Hadamard product (aka. element-wise multiplication)
     pub fn hadamard_product(self, rhs: &Self) -> Self {
         self.map_zip_ref(rhs, |i, j| i * j)
@@ -144,23 +144,17 @@ impl<D: Dimension> Tensor<D> where bound!(inner D): Sized {
     /// Computes the inner product of the given tensors.
     #[inline]
     pub fn dot(&self, b: &Self) -> f32 {
-        self.iter().zip(b.iter()).map(|(i, j)| *i * *j).sum()
+        self.inner.as_ref().iter().zip(b.inner.as_ref().iter()).map(|(i, j)| *i * *j).sum()
     }
 }
 
 impl<const W: usize, const H: usize> Matrix<W, H> where
-    bound!(inner Dim2<W, H>): Sized,
-    bound!(Dim2<H, W>): Sized,
+    [f32; 1 * W * H]: Sized,
+    [f32; 1 * H * W]: Sized,
 {
     #[inline]
-    #[deprecated]
-    /// Transposes the given matrix. Does not take a reference due to an oopsie.
-    pub fn transpose(self) -> Matrix<H, W> {
-        self.transpose_ref()
-    }
-
     /// Transposes the given matrix.
-    pub fn transpose_ref(&self) -> Matrix<H, W> {
+    pub fn transpose(&self) -> Matrix<H, W> {
         let mut t = Matrix::new_filled(0.0);
 
         for y in 0..H {
@@ -189,7 +183,7 @@ macro_rules! convolution {
             let $pv = ($pv - 1) * $stride[0] + 1;
             let mut wsum = 0.0;
             convolution!(for_in $($rp $rk $rpv $rkv),* ; wsum $self $kernel $($rp $rk $rpv $rkv),*);
-            $new.inner[$i] = wsum;
+            $new.inner.as_mut()[$i] = wsum;
             $i += 1;
         }
     };
@@ -200,7 +194,7 @@ macro_rules! convolution {
         }
     };
     ($tensor:tt $D:tt $dim:tt $($i:tt $p:tt $k:tt $b:tt $pv:tt $kv:tt),*) => {
-        impl<$(const $p: usize),*> $tensor<$($p),*> where bound!($D<$($p),*>): Sized {
+        impl<$(const $p: usize),*> $tensor<$($p),*> where [f32; 1 $(*$p)*]: Sized {
             /// Computes the convolution with padded 0.
             ///
             /// # Stride
@@ -217,12 +211,12 @@ macro_rules! convolution {
                 kernel: &$tensor<$($k),*>,
                 stride: &[usize],
             ) -> $tensor<$($b),*> where
-                bound!(inner $D<$($k),*>): Sized,
-                bound!(inner $D<$($b),*>): Sized,
+                [f32; 1 $(* $k)*]: Sized,
+                [f32; 1 $(* $b)*]: Sized,
             {
                 $(assert_eq!($b, ($p + $k + stride[$i] - 1) / stride[$i] - 1);)*
 
-                let mut new = Tensor::new_filled(0.0);
+                let mut new: $tensor<$($b),*> = Tensor::new_filled(0.0);
                 let mut i = 0;
 
                 convolution!(for_out stride, $($p $k $pv),*; self kernel new i $($p $k $pv $kv),*);
