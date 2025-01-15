@@ -1,10 +1,9 @@
 <!-- updated by cargo-release -->
 
 # Unreleased
-
-# 0.2.1
-
-# 0.2.2
+- Sealed `Dimension`
+- Added `Tensor::convolution`, `Tensor::reshape` and `SameSized`
+- Probably more that I forgot
 
 # 0.2.1
 - Added `bounds!` macro for `where` clauses on generic dimensions

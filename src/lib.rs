@@ -10,6 +10,20 @@ pub mod vector;
 
 trait Seal {}
 
+impl<D: Dimension> Seal for Tensor<D> where bound!(inner D): Sized {}
+impl<T, const S: usize> Seal for [T; S] {}
+
+#[allow(private_bounds)]
+pub trait SameSized<T>: Seal {}
+
+impl<T, const S: usize> SameSized<[T; S]> for [T; S] {}
+
+impl<D: Dimension, E: Dimension> SameSized<E> for D where
+    [f32; D::NUM_ELEMENTS]: SameSized<[f32; E::NUM_ELEMENTS]>,
+    bound!(inner D): Sized,
+    bound!(inner E): Sized,
+{}
+
 #[macro_export]
 /// Used for generic `where` [`Dimension`] bounds.
 ///
@@ -121,6 +135,16 @@ impl<D: Dimension> Tensor<D> where bound!(inner D): Sized {
         let f = &f;
         self.iter_mut().zip(r.iter()).for_each(|(i, j)| *i = f(*i, *j));
     }
+
+    pub fn reshape<E: Dimension>(self) -> Tensor<E> where
+        bound!(inner E): Sized,
+        E: SameSized<D>,
+    {
+        // SAFETY: D and E are the same size bounded by the 2nd where clause
+        unsafe {
+            Tensor { inner: *core::mem::transmute::<&[f32; D::NUM_ELEMENTS], &[f32; E::NUM_ELEMENTS]>(&self) }
+        }
+    }
 }
 
 /// Representing a size and order of a [`Tensor`].
@@ -145,6 +169,7 @@ macro_rules! dim {
         impl<$(const $ti: usize),*> From<Tensor<$fn<$($ti,)* 1>>> for Tensor<$tn<$($ti),*>> where
             bound!(inner $fn::<$($ti,)* 1>): Sized,
             bound!(inner $tn::<$($ti),*>): Sized,
+            $tn<$($ti),*>: SameSized<$fn<$($ti,)* 1>>,
         {
             fn from(value: Tensor<$fn<$($ti,)* 1>>) -> Self {
                 value.down_conv()
@@ -154,6 +179,7 @@ macro_rules! dim {
         impl<$(const $ti: usize),*> From<Tensor<$tn<$($ti),*>>> for Tensor<$fn<$($ti,)* 1>> where
             bound!(inner $fn::<$($ti,)* 1>): Sized,
             bound!(inner $tn::<$($ti),*>): Sized,
+            $fn<$($ti,)* 1>: SameSized<$tn<$($ti),*>>,
         {
             fn from(value: Tensor<$tn<$($ti),*>>) -> Self {
                 value.up_conv()
@@ -163,6 +189,7 @@ macro_rules! dim {
         impl<$(const $ti: usize),*> Tensor<$tn<$($ti),*>> where
             bound!(inner $fn::<$($ti,)* 1>): Sized,
             bound!(inner $tn::<$($ti),*>): Sized,
+            $fn<$($ti,)* 1>: SameSized<$tn<$($ti),*>>,
         {
             /// Convert a tensor up an order.
             ///
@@ -177,10 +204,7 @@ macro_rules! dim {
             /// assert_eq!(a, HVector { inner: [1.2] });
             /// ```
             pub fn up_conv(self) -> Tensor<$fn<$($ti,)* 1>> {
-                // SAFETY: A tensor of size […] and […, 1] is the same
-                unsafe {
-                    Tensor { inner: *core::mem::transmute::<&[f32; <$tn<$($ti),*> as Dimension>::NUM_ELEMENTS], &[f32; <$fn<$($ti,)* 1> as Dimension>::NUM_ELEMENTS]>(&self) }
-                }
+                self.reshape()
             }
 
             /// Join multiple tensors into a tensor with an order higher by copying each element.
@@ -218,6 +242,7 @@ macro_rules! dim {
         impl<$(const $ti: usize),*> Tensor<$fn<$($ti,)* 1>> where
             bound!(inner $fn::<$($ti,)* 1>): Sized,
             bound!(inner $tn::<$($ti),*>): Sized,
+            $tn<$($ti),*>: SameSized<$fn<$($ti,)* 1>>,
         {
             /// Convert a tensor down an order if its last dimension is 1.
             ///
@@ -232,10 +257,7 @@ macro_rules! dim {
             /// assert_eq!(a, Scalar { inner: [1.2] });
             /// ```
             pub fn down_conv(self) -> Tensor<$tn<$($ti),*>> {
-                // SAFETY: A tensor of size […, 1] and […] is the same
-                unsafe {
-                    Tensor { inner: *core::mem::transmute::<&[f32; <$fn<$($ti,)* 1> as Dimension>::NUM_ELEMENTS], &[f32; <$tn<$($ti),*> as Dimension>::NUM_ELEMENTS]>(&self) }
-                }
+                self.reshape()
             }
         }
     };

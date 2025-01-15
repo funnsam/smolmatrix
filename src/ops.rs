@@ -197,7 +197,7 @@ macro_rules! convolution {
             /// Computes the convolution with padded 0.
             ///
             /// # Stride
-            /// The `stride` parameter controls the amount that `kernel` moves in each element.
+            /// The `stride` parameter controls the amount that `kernel` moves in each iteration.
             #[doc = concat!("Note that it panics when any elememt in `stride[..", $dim, "]` is 0")]
             #[doc = concat!("or `stride.len() < ", $dim, "`. If unsure, use `&[1; ", $dim, "]`")]
             ///
