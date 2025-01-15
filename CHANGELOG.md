@@ -1,6 +1,8 @@
 <!-- updated by cargo-release -->
 
 # Unreleased
+
+# 0.3.0
 - Sealed `Dimension`
 - Added `Tensor::convolution`, `Tensor::reshape` and `SameSized`
 - Probably more that I forgot
