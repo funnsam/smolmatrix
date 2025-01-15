@@ -152,8 +152,15 @@ impl<const W: usize, const H: usize> Matrix<W, H> where
     bound!(inner Dim2<W, H>): Sized,
     bound!(Dim2<H, W>): Sized,
 {
-    /// Transposes the given matrix.
+    #[inline]
+    #[deprecated]
+    /// Transposes the given matrix. Does not take a reference due to an oopsie.
     pub fn transpose(self) -> Matrix<H, W> {
+        self.transpose_ref()
+    }
+
+    /// Transposes the given matrix.
+    pub fn transpose_ref(&self) -> Matrix<H, W> {
         let mut t = Matrix::new_filled(0.0);
 
         for y in 0..H {
