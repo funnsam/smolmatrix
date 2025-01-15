@@ -2,6 +2,8 @@
 
 # Unreleased
 
+# 0.3.1
+
 # 0.3.0
 - Sealed `Dimension`
 - Added `Tensor::convolution`, `Tensor::reshape` and `SameSized`
