@@ -1,6 +1,8 @@
 <!-- updated by cargo-release -->
 
 # Unreleased
+
+# 0.4.0
 - Now using trait assoc types
 - `Dimension` is always Debug + Clone + serde traits
 - Removed `bounds!`
