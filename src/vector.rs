@@ -45,20 +45,32 @@ impl<D: VectorDim> IndexMut<usize> for Tensor<D> {
 }
 
 impl<D: VectorDim> Tensor<D> {
-    pub fn x(&self) -> f32 { self.inner.as_ref()[0] }
-    pub fn y(&self) -> f32 { self.inner.as_ref()[1] }
-    pub fn z(&self) -> f32 { self.inner.as_ref()[2] }
-    pub fn w(&self) -> f32 { self.inner.as_ref()[3] }
+    /// Get the 1st component.
+    pub fn x(&self) -> f32 { self[0] }
+    /// Get the 2nd component.
+    pub fn y(&self) -> f32 { self[1] }
+    /// Get the 3rd component.
+    pub fn z(&self) -> f32 { self[2] }
+    /// Get the 4th component.
+    pub fn w(&self) -> f32 { self[3] }
 
-    pub fn x_ref(&self) -> &f32 { &self.inner.as_ref()[0] }
-    pub fn y_ref(&self) -> &f32 { &self.inner.as_ref()[1] }
-    pub fn z_ref(&self) -> &f32 { &self.inner.as_ref()[2] }
-    pub fn w_ref(&self) -> &f32 { &self.inner.as_ref()[3] }
+    /// Get the 1st component by reference.
+    pub fn x_ref(&self) -> &f32 { &self[0] }
+    /// Get the 2nd component by reference.
+    pub fn y_ref(&self) -> &f32 { &self[1] }
+    /// Get the 3rd component by reference.
+    pub fn z_ref(&self) -> &f32 { &self[2] }
+    /// Get the 4th component by reference.
+    pub fn w_ref(&self) -> &f32 { &self[3] }
 
-    pub fn x_mut(&mut self) -> &mut f32 { &mut self.inner.as_mut()[0] }
-    pub fn y_mut(&mut self) -> &mut f32 { &mut self.inner.as_mut()[1] }
-    pub fn z_mut(&mut self) -> &mut f32 { &mut self.inner.as_mut()[2] }
-    pub fn w_mut(&mut self) -> &mut f32 { &mut self.inner.as_mut()[3] }
+    /// Get the 1st component by a mutable reference.
+    pub fn x_mut (&mut self) -> &mut f32 { &mut self[0] }
+    /// Get the 2nd component by a mutable reference.
+    pub fn y_mut (&mut self) -> &mut f32 { &mut self[1] }
+    /// Get the 3rd component by a mutable reference.
+    pub fn z_mut (&mut self) -> &mut f32 { &mut self[2] }
+    /// Get the 4th component by a mutable reference.
+    pub fn w_mut (&mut self) -> &mut f32 { &mut self[3] }
 
     /// Computes the length from `self` to `[0, …]`.
     #[inline]
@@ -73,6 +85,7 @@ impl<D: VectorDim> Tensor<D> {
         self.inner.as_ref().iter().map(|i| i * i).sum()
     }
 
+    /// Computes the normalized vector of `self` where [`Self::length`] is ≈1.
     #[inline]
     #[cfg(feature = "std")]
     pub fn unit(self) -> Self {
@@ -82,19 +95,21 @@ impl<D: VectorDim> Tensor<D> {
 }
 
 impl<D: VectorDim3> Tensor<D> {
+    /// Computes the cross product between 2 vectors of length 3.
     #[inline]
     pub fn cross(&self, b: &Self) -> Self {
         let mut new = Self::new_filled(0.0);
 
-        new.inner.as_mut()[0] = self.inner.as_ref()[1] * b.inner.as_ref()[2] - self.inner.as_ref()[2] * b.inner.as_ref()[1];
-        new.inner.as_mut()[1] = self.inner.as_ref()[2] * b.inner.as_ref()[0] - self.inner.as_ref()[0] * b.inner.as_ref()[2];
-        new.inner.as_mut()[2] = self.inner.as_ref()[0] * b.inner.as_ref()[1] - self.inner.as_ref()[1] * b.inner.as_ref()[0];
+        new[0] = self[1] * b[2] - self[2] * b[1];
+        new[1] = self[2] * b[0] - self[0] * b[2];
+        new[2] = self[0] * b[1] - self[1] * b[0];
 
         new
     }
 }
 
 impl<const S: usize> Vector<S> where [f32; 1 * 1 * S]: Sized {
+    /// Transpose `self` into a [horizontal vector](HVector).
     #[inline]
     pub fn into_horizontal(self) -> HVector<S> where
         [f32; 1 * S]: Sized,
@@ -105,6 +120,7 @@ impl<const S: usize> Vector<S> where [f32; 1 * 1 * S]: Sized {
 }
 
 impl<const S: usize> HVector<S> where [f32; 1 * S]: Sized {
+    /// Transpose `self` into a [vertical vector](Vector).
     #[inline]
     pub fn into_vertical(self) -> Vector<S> where
         [f32; 1 * 1 * S]: Sized,
@@ -142,6 +158,22 @@ fn hvector_index() {
 
 #[cfg(test)]
 #[test]
+#[should_panic]
+fn hvector_index_panics() {
+    let a = HVector::<3>::new_filled(0.0);
+    a[3];
+}
+
+#[cfg(test)]
+#[test]
+#[should_panic]
+fn hvector_index_fn_panics() {
+    let a = HVector::<3>::new_filled(0.0);
+    a.w();
+}
+
+#[cfg(test)]
+#[test]
 fn vector_index() {
     let mut a = Vector::<4>::new_filled(0.0);
 
@@ -164,6 +196,22 @@ fn vector_index() {
     assert_eq!(*a.z_ref(), 7.0);
     assert_eq!(*a.w_ref(), 8.0);
     assert_eq!(a, Vector { inner: [5.0, 6.0, 7.0, 8.0] });
+}
+
+#[cfg(test)]
+#[test]
+#[should_panic]
+fn vector_index_panics() {
+    let a = Vector::<3>::new_filled(0.0);
+    a[3];
+}
+
+#[cfg(test)]
+#[test]
+#[should_panic]
+fn vector_index_fn_panics() {
+    let a = Vector::<3>::new_filled(0.0);
+    a.w();
 }
 
 #[cfg(test)]

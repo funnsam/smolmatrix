@@ -1,6 +1,11 @@
 <!-- updated by cargo-release -->
 
 # Unreleased
+- Now using trait assoc types
+- `Dimension` is always Debug + Clone + serde traits
+- Removed `bounds!`
+- `Matrix::transpose` now takes a reference
+- More docs
 
 # 0.3.1
 

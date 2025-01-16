@@ -1,6 +1,7 @@
 use crate::*;
 
 impl<D: Dimension> Tensor<D> {
+    /// Gets the index of a specific element to `Self::inner`.
     #[inline]
     pub fn index_of(index: &[usize]) -> usize {
         let mut i = 0;
@@ -39,6 +40,14 @@ fn hvector() {
 
 #[cfg(test)]
 #[test]
+#[should_panic]
+fn hvector_panics() {
+    let a = HVector::<3>::new_filled(0.0);
+    a[[3]];
+}
+
+#[cfg(test)]
+#[test]
 fn vector() {
     let mut a = Vector::<3>::new_filled(0.0);
 
@@ -46,6 +55,14 @@ fn vector() {
     a[[0, 1]] = 2.0;
     a[[0, 2]] = 3.0;
     assert_eq!(a, Vector { inner: [1.0, 2.0, 3.0] });
+}
+
+#[cfg(test)]
+#[test]
+#[should_panic]
+fn vector_panics() {
+    let a = Vector::<3>::new_filled(0.0);
+    a[[0, 3]];
 }
 
 #[cfg(test)]
@@ -62,6 +79,22 @@ fn matrix() {
 
 #[cfg(test)]
 #[test]
+#[should_panic]
+fn matrix_panics_x() {
+    let a = Matrix::<2, 2>::new_filled(0.0);
+    a[[2, 0]];
+}
+
+#[cfg(test)]
+#[test]
+#[should_panic]
+fn matrix_panics_y() {
+    let a = Matrix::<2, 2>::new_filled(0.0);
+    a[[0, 2]];
+}
+
+#[cfg(test)]
+#[test]
 fn tensor3() {
     let mut a = Tensor3::<2, 2, 2>::new_filled(0.0);
 
@@ -74,4 +107,28 @@ fn tensor3() {
     a[[0, 1, 1]] = 7.0;
     a[[1, 1, 1]] = 8.0;
     assert_eq!(a, Tensor { inner: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0] });
+}
+
+#[cfg(test)]
+#[test]
+#[should_panic]
+fn tensor3_panics_x() {
+    let a = Tensor3::<2, 2, 2>::new_filled(0.0);
+    a[[2, 0, 0]];
+}
+
+#[cfg(test)]
+#[test]
+#[should_panic]
+fn tensor3_panics_y() {
+    let a = Tensor3::<2, 2, 2>::new_filled(0.0);
+    a[[0, 2, 0]];
+}
+
+#[cfg(test)]
+#[test]
+#[should_panic]
+fn tensor3_panics_z() {
+    let a = Tensor3::<2, 2, 2>::new_filled(0.0);
+    a[[0, 0, 2]];
 }

@@ -24,6 +24,16 @@ impl<D: Dimension, E: Dimension> SameSized<E> for D where
 
 impl<D: Dimension, E: Dimension + SameSized<D>> SameSized<Tensor<E>> for Tensor<D> {}
 
+#[cfg(feature = "serde")]
+pub trait Serde<'a>: serde::Serialize + serde::Deserialize<'a> {}
+#[cfg(not(feature = "serde"))]
+pub trait Serde<'a> {}
+
+#[cfg(feature = "serde")]
+impl<'a, T: serde::Serialize + serde::Deserialize<'a>> Serde<'a> for T {}
+#[cfg(not(feature = "serde"))]
+impl<'a, T> Serde<'a> for T {}
+
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Tensor<D: Dimension> {
@@ -99,7 +109,7 @@ impl<D: Dimension> Tensor<D> {
 ///
 /// This trait is sealed so that no possible underlying unsafe code are unsafe.
 #[allow(private_bounds)]
-pub trait Dimension: fmt::Debug + Clone + PartialEq + Seal {
+pub trait Dimension: fmt::Debug + Clone + PartialEq + Seal + for<'a> Serde<'a> {
     /// The order (or rank) of this dimension
     const ORDER: usize;
 
@@ -252,7 +262,7 @@ macro_rules! dim {
 
             #[inline]
             fn index(&self, index: [usize; $d]) -> &Self::Output {
-                &self.inner.as_ref()[Self::index_of(&index)]
+                unsafe { self.inner.as_ref().get_unchecked(Self::index_of(&index)) }
             }
         }
 
@@ -261,7 +271,7 @@ macro_rules! dim {
         {
             #[inline]
             fn index_mut(&mut self, index: [usize; $d]) -> &mut Self::Output {
-                &mut self.inner.as_mut()[Self::index_of(&index)]
+                unsafe { self.inner.as_mut().get_unchecked_mut(Self::index_of(&index)) }
             }
         }
 
